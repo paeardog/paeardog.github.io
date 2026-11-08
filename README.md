@@ -332,7 +332,7 @@ var deviceStatusConfig = {
 ## 🙏 鸣谢
 
 - [zyyo.cc](https://zyyo.cc) — 主页 1 页面模板
-- [Muyu の 主页][https://zyyo.cc](https://muyuhome.cc.cd/) — 二改
+- [Muyu の 主页](https://muyuhome.cc.cd/) — 二改
 - [Meting](https://github.com/metowolf/Meting) — 音乐接口解析
 - [Hitokoto 一言](https://hitokoto.cn) — 一言数据
 - [和风天气 QWeather](https://www.qweather.com) — 天气与空气质量数据
