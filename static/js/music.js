@@ -1,17 +1,8 @@
-/* ==========================================================================
-   music.js —— 音乐卡片（移植自主页1 static/js/script.js 的音乐组件段落）
-   来源：static/js/script.js 第 11-16 行（配置）与第 672-1191 行（全部逻辑）
-   说明：
-   - 纯原生 JS，只依赖浏览器 Audio API + fetch + Font Awesome 图标，无第三方库。
-   - 全部 DOM 查询做空值保护；节点缺失时静默返回，不抛异常。
-   - id 沿用主页1 的 mw-* / music-* 命名（jianjie 页面无同名节点，无冲突）。
-   - 歌单仍用主页2 原来的网易云歌单 ID，仅替换播放器实现。
-   ========================================================================== */
 (function () {
 	"use strict";
 
-	// ===== 歌单配置（原 jianjie 用 APlayer 播放的同一张网易云歌单） =====
-	var musicPlaylistConfig = {
+	// ===== 歌单配置（页面可通过 window.MUSIC_PLAYLIST_CONFIG 覆盖） =====
+	var musicPlaylistConfig = window.MUSIC_PLAYLIST_CONFIG || {
 		server: "netease",
 		type: "playlist",
 		id: "2926227857",

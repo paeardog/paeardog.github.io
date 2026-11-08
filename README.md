@@ -6,7 +6,7 @@
 
 淡淡的就会顺顺的.
 
-个人主页源码,纯静态页面,无需构建,包含**两套风格迥异的主页**。
+个人主页源码,纯静态页面,无需构建,采用**卡片式 Dashboard 主页**。
 
 在线访问:[https://paeardog.github.io](https://paeardog.github.io)
 
@@ -14,72 +14,58 @@
 
 ## 📖 项目简介
 
-一套仓库里放了两套主页,各有各的味道,右上角/卡片上互相一键切换:
+主页入口为 [`index.html`](index.html),采用卡片式 Dashboard 风格:单列资料区 + 双列网格、紫色点缀;保留明暗主题与背景/卡片调节,包含终端、时间天气、音乐、时间线、站点与项目合集。
 
-| 主页 | 入口 | 风格 |
-| --- | --- | --- |
-| **主页 1 · 完整版** | [`index.html`](index.html) | 基于 [zyyo.cc](https://zyyo.cc) 模板魔改。左右分栏、毛玻璃卡片、明暗主题、渐变手写标题,信息密度高 |
-| **主页 2 · 简洁版** | [`jianjie/index.html`](jianjie/index.html) | 深色卡片式 Dashboard,单列信息流 + 双列网格。纯黑灰配色 + 紫色点缀,支持 PWA 离线 |
-
-> 主页 1 的工具栏里有一枚 <kbd>✨</kbd> 按钮跳转到主页 2;主页 2 的「站点合集」首卡与**右键菜单 → 模式**可切回主页 1。
+样式、脚本、图片与字体统一存放在 `static/` 下。
 
 ## ✨ 功能特性
 
-### 主页 1(完整版)
+### 主页
 
-- **一言 Hitokoto**:打字机效果逐字显示,每 20 秒自动刷新
+- **卡片式布局**:资料卡(头像 + 别名 + 所在地 + 座右铭 + 标签)、一言卡、时间天气卡、音乐卡、时间线、访问统计、GitHub 贪吃蛇、社交链接、站点与项目合集、技能图
+- **终端模式**:**双击资料卡**进入,支持 `help` / `cd` / `visit` 等命令
+- **一言 Hitokoto**:打字机效果逐字显示,定时自动刷新
 - **当地时间**:实时时钟 + 中文日期(含星期)与时段问候,每秒更新
-- **天气预报**:基于[和风天气 QWeather](https://www.qweather.com),**自动定位访问者所在地**(浏览器 GPS → IP 定位 → 兜底城市,逐级回退);可展开今日详情(风力、能见度、体感温度、湿度、气压、空气质量、云量、紫外线、降水量、日出日落、污染物浓度)
-- **音乐播放器**:自研播放器(原生 Audio API)+ Meting 接口加载网易云歌单,支持歌词、播放列表、音量、播放模式
-- **主题设置**:明暗主题切换(Cookie 持久化),背景/卡片的透明度、模糊度与卡片颜色可调(localStorage 持久化)
+- **天气预报**:通过定位链获取和风天气数据(浏览器 GPS → IP 定位 → 兜底城市),可展开今日详情
+- **音乐播放器**:通过 Meting 接口加载网易云歌单,支持歌词、播放列表、音量、播放模式
+- **主题设置**:明暗主题切换(Cookie 持久化),背景/卡片的透明度、模糊度与卡片颜色可调(localStorage 持久化),页面组件配色随主题联动
 - **GitHub 贡献贪吃蛇**:明暗两套 SVG 随主题切换
 - **站点运行时长**:建站起每秒累计的天/时/分/秒
-- **输入特效**:输入框火焰特效 + 鼠标星尘拖尾
-- **其他**:加载动画、图片弹窗(QQ / 赞赏码)、访问统计、时间线、个人标签、站点与项目展示、移动端响应式适配
-
-### 主页 2(简洁版)
-
-- **卡片式布局**:个人资料卡(头像 + 别名 + 所在地 + 座右铭 + 标签)、一言卡、时间天气卡、音乐卡、最新文章卡
-- **时间天气卡**:与主页 1 同源的定位链与和风天气数据,左右两列中间以分隔线对齐卡片几何中心
-- **音乐卡**:与主页 1 同一套播放器逻辑(歌词抽屉 / 列表抽屉展开时,同排卡片自动等高)
-- **最新文章卡**:读取本地文章快照 `data/posts.json`,条数不设上限;卡片高度固定,文章多则内部滚动。快照由 `tools/sync-posts.mjs` 从博客 atom 订阅源生成,仓库里配了 GitHub Actions 每天自动同步一次
-- **终端模式**:**双击头像卡片**进入,支持 `help` / `cd` / `visit` / `douyin` 等命令
-- **右键菜单**:赞赏、全屏、刷新、返回、切换模式、联系方式、关闭
-- **随机背景**:随机背景壁纸 + 随机前景人物立绘,配合 Parallax 视差与 NodeCursor 跟随光标
-- **PWA 支持**:`manifest.json` + Service Worker 离线缓存(仅缓存本站自有资源,第三方接口/CDN 直接放行)
-- **细节**:动态网页标题(切走/切回时变化)、加载动画、进入问候弹窗、隐藏式页脚(鼠标移到底部出现)、移动端响应式
+- **细节**:加载动画、图片弹窗(QQ / 赞赏码)、右键菜单、自定义光标、固定静态背景、常驻页面底部的页脚、进入问候弹窗、移动端响应式适配
 
 ## 📁 目录结构
 
 ```text
 .
-├── index.html                # 主页 1(完整版)
-├── jianjie/                  # 主页 2(简洁版)
-│   ├── index.html
-│   ├── manifest.json         # PWA 清单
-│   ├── service-worker.js     # 离线缓存
+├── index.html                # Dashboard 主页
+├── static/                   # 主页资源
 │   ├── css/
-│   │   ├── main.css          # 基础样式(卡片、标题、布局)
-│   │   ├── fonts.css         # 字体声明(复用主页 1 的字体文件)
-│   │   ├── layout.css        # 卡片式布局与新增组件样式
+│   │   ├── style.css         # 基础样式 / 主题变量 / 加载动画 / 弹窗
+│   │   ├── root.css          # 主题配色变量
+│   │   ├── simple.css        # Dashboard 布局(卡片、网格、响应式)
 │   │   ├── dashboard.css     # 时间天气卡样式
-│   │   ├── music.css         # 音乐卡样式
-│   │   └── ...               # terminal / tab / Text / Right / loading / fira_code
+│   │   ├── terminal.css      # 终端样式
+│   │   ├── fira_code.css     # FiraCode 字体声明(引用 ../fonts/)
+│   │   └── Right.css         # 右键菜单样式
 │   ├── js/
-│   │   ├── dashboard.js      # 当地时间 + 天气预报
-│   │   ├── music.js          # 音乐播放器
+│   │   ├── simple.js         # 布局逻辑(主题、页脚、光标、运行时长等)
+│   │   ├── script.js         # 旧版主页逻辑(当前 index.html 不再引用,保留供参考)
+│   │   ├── jquery.min.js     # jQuery
+│   │   ├── nodecursor-jquery.js # NodeCursor 光标跟随
 │   │   ├── layout.js         # 一言卡片(打字机)
-│   │   ├── rss.js            # 最新文章卡片
+│   │   ├── dashboard.js      # 当地时间 + 天气预报
 │   │   ├── terminal.js       # 终端模式
-│   │   └── ...               # main / tab / Text / Right / loading / suiji-picture 等
-│   ├── data/posts.json       # 博客文章快照(由 tools/sync-posts.mjs 生成)
-│   └── static/img/           # 主页 2 自有图片(头像、二维码、图标)
-├── static/                   # 主页 1 资源
-│   ├── css/                  # style.css / root.css(主题变量)
-│   ├── js/script.js          # 主页 1 全部逻辑
+│   │   ├── music.js          # 音乐播放器
+│   │   └── Right.js          # 右键菜单
 │   ├── img/                  # 图片资源
 │   ├── svg/                  # 贪吃蛇 SVG、技能图等素材
-│   └── fonts/                # 自托管字体(霞鹜文楷 / Pacifico / Ubuntu)
+│   └── fonts/                # 自托管字体(霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
+│       ├── FiraCode-Bold.woff2
+│       ├── FiraCode-Light.woff2
+│       ├── FiraCode-Medium.woff2
+│       ├── FiraCode-Regular.woff2
+│       ├── FiraCode-SemiBold.woff2
+│       └── FiraCode-VF.woff2
 ├── worker/                   # 电脑状态中转(Cloudflare Worker + D1)
 │   ├── device-status-worker.js  # 上报 / 读取 / 探活三个接口
 │   ├── wrangler.toml         # D1 / KV 绑定与 Worker 名称
@@ -87,28 +73,24 @@
 ├── tools/                    # 本机上报脚本(Windows PowerShell)
 │   ├── report-device.ps1     # 取前台窗口 + 空闲时长,POST 上报,并同步一份快照到 Gist
 │   ├── install-device-task.ps1   # 注册开机自启(计划任务 + 启动文件夹快捷方式)
-│   ├── uninstall-device-task.ps1 # 卸载自启与运行中的实例
-│   └── sync-posts.mjs        # 抓博客 atom 订阅源,生成主页 2 的文章快照
-├── .github/workflows/        # GitHub Actions
-│   └── sync-posts.yml        # 每天自动跑一次 sync-posts.mjs 并提交快照
+│   └── uninstall-device-task.ps1 # 卸载自启与运行中的实例
+├── CNAME                     # GitHub Pages 自定义域名
 ├── Caddyfile                 # Caddy 服务器配置
 ├── Dockerfile                # 基于 caddy:alpine 的镜像
 └── docker-compose.yaml       # Docker Compose 编排
 ```
 
-> 两个主页**共用** `static/fonts/` 里的字体文件 —— 主页 2 的 `jianjie/css/fonts.css` 用 `../../static/fonts/` 引用,不重复占仓库体积。
-
 ## 🎨 字体
 
-两套主页使用完全相同的字体体系(定义见 [`static/css/style.css`](static/css/style.css) 与 [`jianjie/css/fonts.css`](jianjie/css/fonts.css)):
+主页字体体系定义见 [`static/css/style.css`](static/css/style.css):
 
 | 字体变量 | 字族 | 用途 |
 | --- | --- | --- |
 | `--font-cn` | `"a"` → 霞鹜文楷 LXGW ZhenKai | 中文正文 |
 | `--font-en` | `"b"` → Ubuntu | 英文与界面正文(`body` 默认) |
-| `--font-title` | `"title"` → Pacifico | 标题手写体(主页 1 的 "Hello I' m Muyu"、主页 2 的 "Muyu") |
+| `--font-title` | `"title"` → Pacifico | 标题手写体(主页的 "eardog") |
 
-字体全部**自托管**,不依赖 Google Fonts 等外部 CDN。主页 2 的 `fonts.css` 必须排在 `main.css` **之后**引入,否则覆盖不掉 `main.css` 里的 `Microsoft YaHei`。
+字体全部**自托管**,不依赖 Google Fonts 等外部 CDN。FiraCode 由 `static/css/fira_code.css` 声明,通过 `../fonts/` 引用 `static/fonts/` 下的 6 个 woff2 字体文件。
 
 ## 🚀 本地预览
 
@@ -117,15 +99,12 @@
 ```bash
 # 方式一:直接用浏览器打开 index.html
 
-# 方式二:起一个本地静态服务(推荐,Service Worker / 相对路径更接近线上)
+# 方式二:从仓库根目录起一个本地静态服务(推荐,相对路径更接近线上)
 python -m http.server 8080
-# 主页 1:http://localhost:8080/
-# 主页 2:http://localhost:8080/jianjie/
+# 主页:http://localhost:8080/
 ```
 
 > 一言、天气、音乐等接口需联网才能正常加载。
->
-> ⚠️ 主页 2 的字体路径是 `../../static/fonts/`,**必须从仓库根目录起服务**。若在 `jianjie/` 目录内起服务,`static/` 会越出文档根导致字体 404。
 
 ## 📦 部署
 
@@ -137,58 +116,28 @@ python -m http.server 8080
 ### Docker 自建
 
 ```bash
-git clone https://github.com/MuyuDada/muyudada.github.io.git
-cd muyudada.github.io
+git clone https://github.com/paeardog/paeardog.github.io.git
+cd paeardog.github.io
 # 将 Caddyfile 中的 example.com 改为你的域名
 docker compose up -d
 ```
 
 ## 🔧 个性化配置
 
-### 主页 1
+### 主页
 
-主要改动集中在 [`index.html`](index.html) 和 [`static/js/script.js`](static/js/script.js):
+布局改动集中在 [`index.html`](index.html)、[`static/css/simple.css`](static/css/simple.css) 与 [`static/js/simple.js`](static/js/simple.js);天气、音乐、终端、右键菜单脚本均位于 `static/js/`:
 
 | 配置项 | 位置 | 说明 |
 | --- | --- | --- |
-| `musicPlaylistConfig.id` | `static/js/script.js` | 网易云歌单 ID(取歌单链接中的 id) |
-| `weatherConfig` | `static/js/script.js` | 天气定位方式、兜底城市与刷新间隔(见下) |
-| `deviceStatusConfig` | `static/js/script.js` | 电脑状态卡:Worker 地址、备用通道(Gist)地址、轮询间隔、进程名→图标映射。`endpoint` 与 `fallbackEndpoint` 都留空则整张卡片自动隐藏 |
-| `siteStartTime` | `static/js/script.js` | 建站起始时间(运行时长统计) |
+| `window.MUSIC_PLAYLIST_CONFIG` | `index.html` 内联脚本 | 网易云歌单 ID(取歌单链接中的 id) |
+| `dwWeatherConfig` | `static/js/dashboard.js` | 天气定位方式、兜底城市、刷新间隔与和风天气 Key |
+| `siteStartTime` | `static/js/simple.js` | 建站起始时间(运行时长统计) |
+| 背景图片 | `static/css/simple.css` 中 `#background` | 默认 `url(../img/background.jpg)`,换成自己的图即可 |
 | 社交链接 / 时间线 / 标签 / 项目卡片 | `index.html` | 按需替换为自己的内容 |
 | 页面标题 / 描述 / 关键词 / ICP 备案号 | `index.html` | `<head>` 与 `<footer>` 中修改 |
 | 主题配色 | `static/css/root.css` | `--main_bg_color`、`--item_bg_color` 等变量 |
-
-### 主页 2
-
-| 配置项 | 位置 | 说明 |
-| --- | --- | --- |
-| `dwWeatherConfig` | `jianjie/js/dashboard.js` | 天气定位与和风天气 Key(与主页 1 同结构) |
-| `musicPlaylistConfig.id` | `jianjie/js/music.js` | 网易云歌单 ID |
-| 文章快照 | `jianjie/data/posts.json` | 最新文章卡的数据源,由 `tools/sync-posts.mjs` 生成,别手改 |
-| 文章快照自动同步 | `.github/workflows/sync-posts.yml` | 每天 04:00(UTC+8)跑一次;也可在 Actions 页手动触发 |
-| 随机背景 / 前景图 | `jianjie/js/suiji-picture.js` | 两组图片 URL 数组 |
-| 社交链接 / 站点合集 / 个人项目 | `jianjie/index.html` | 按需替换 |
-| PWA 名称与图标 | `jianjie/manifest.json` | 应用名、主题色、图标 |
-| **缓存版本号** | `jianjie/service-worker.js` | 见下方注意事项 |
-
-> ⚠️ **改了主页 2 的 CSS / JS 后,必须把 `jianjie/service-worker.js` 的 `cacheName` 版本号 +1**。
-> 该 Service Worker 是 **cache-first** 且安装时预缓存全部样式与脚本,不升版本号线上用户会一直拿到旧文件。
-
-### 主页 2 文章快照
-
-主页 2 的「最新文章」卡读的是静态快照 `jianjie/data/posts.json`。博客站点没开 CORS,浏览器无法跨域直接抓订阅源,所以快照必须在构建期(或本机)生成好:
-
-```bash
-node tools/sync-posts.mjs        # 抓 atom 订阅源 → 写 jianjie/data/posts.json
-```
-
-仓库里配了 GitHub Actions(`.github/workflows/sync-posts.yml`),每天 04:00(UTC+8)自动跑一次,快照有变化才提交。也可以在 GitHub 的 Actions 页面手动触发(`workflow_dispatch`)。
-
-**两个坑**:
-
-1. **Service Worker 会把 `data/posts.json` 也缓存住。** 原来的 fetch 是 cache-first,快照更新了用户还是看到旧文章。现在 SW 对 `/data/` 下的请求改成**网络优先**,只有断网时才退回缓存 —— 加了新的会变数据时记得也走这条路径。
-2. **博客自己的 atom 里有几篇 1970 年的占位文章**(Firefly 模板自带的示例页)。快照会**如实照搬**上游的日期,不做猜测性修正 —— 与其替上游编一个日期,不如把原始数据原样呈现。
+| 终端命令 / 右键菜单项 | `static/js/terminal.js`、`static/js/Right.js` | 按需修改命令与菜单项 |
 
 ### 天气定位说明
 
@@ -235,6 +184,8 @@ var weatherConfig = {
 5. 定位类接口偶发失败是常态,所以任何一级都不能是单点,最后一定要能回退到兜底城市。
 
 ### 电脑状态卡
+
+> ⚠️ 当前主页改版后**不再展示电脑状态卡**,以下链路与 `worker/`、`tools/` 代码仍完整保留;需要恢复时,可把卡片结构加回页面并复用 `static/js/script.js` 里的 `deviceStatusConfig` 逻辑。
 
 纯静态站点没有后端,读不到「本机正在用什么软件」,所以这条链路是**本机主动上报 + 云端中转**:
 
@@ -321,21 +272,20 @@ var deviceStatusConfig = {
 
 原生 HTML / CSS / JavaScript,**无框架、无构建工具**,克隆下来就能跑。
 
-- **音乐**:原生 `Audio` API + [Meting](https://github.com/metowolf/Meting) 接口解析网易云歌单(主页 1、主页 2 共用同一套逻辑)
-- **图标**:Font Awesome 7(CDN,主页 1 异步加载不阻塞首屏)
-- **字体**:全部自托管(霞鹜文楷 / Pacifico / Ubuntu)
+- **音乐**:原生 `Audio` API + [Meting](https://github.com/metowolf/Meting) 接口解析网易云歌单
+- **图标**:Font Awesome 7(CDN,主页异步加载不阻塞首屏)
+- **字体**:全部自托管(霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
 - **天气**:和风天气 QWeather v1 API
-- **PWA**:主页 2 使用 Service Worker + Web App Manifest
 - **部署**:GitHub Pages 或 Caddy + Docker
 
 ## 🙏 鸣谢
 
-- [zyyo.cc](https://zyyo.cc) — 主页 1 页面模板
+- [zyyo.cc](https://zyyo.cc) — 主页页面模板
 - [Muyu の 主页](https://muyuhome.cc.cd/) — 二改
 - [Meting](https://github.com/metowolf/Meting) — 音乐接口解析
 - [Hitokoto 一言](https://hitokoto.cn) — 一言数据
 - [和风天气 QWeather](https://www.qweather.com) — 天气与空气质量数据
-- [NodeCursor](https://github.com/hmongouachon/NodeCursor) — 主页 2 光标跟随效果
+- [NodeCursor](https://github.com/hmongouachon/NodeCursor) — 主页光标跟随效果
 - [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) — 中文字体
 
 ---

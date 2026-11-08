@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html class="zyyo.net" data-theme="Light">
+<html lang="zh-cn" data-theme="Light">
 
-<head class="zyyo.net">
-
+<head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>
-		eardog </title>
-	<link rel="icon" href="./static/img/eardog.png">
+	<title>eardog</title>
 	<meta name="description" content="淡淡的就会顺顺的.">
 	<meta name="keywords" content="eardogの主页">
+	<meta name="author" content="eardog">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<link rel="icon" href="./static/img/eardog.png">
+	<link rel="apple-touch-icon" href="./static/img/eardog.png">
 	<script>
 		// 首帧渲染前恢复用户主题，避免暗色用户看到白屏闪烁
 		(function () {
@@ -22,21 +22,24 @@
 			} catch (error) { }
 		})();
 	</script>
-	<!-- 预连接关键外部服务：壁纸 / 签名视频与封面 / Font Awesome / 音乐接口 -->
-	<link rel="preconnect" href="https://t.alcy.cc">
+	<!-- 预连接关键外部服务：图片 / Font Awesome / 音乐与天气接口 -->
 	<link rel="preconnect" href="https://muyuimg.cc.cd">
 	<link rel="preconnect" href="https://cdnjs.cloudflare.com">
 	<link rel="preconnect" href="https://api.qijieya.cn">
-	<link rel="dns-prefetch" href="https://raw.githubusercontent.com">
+	<link rel="preconnect" href="https://n27p3u5uhf.re.qweatherapi.com">
 	<link rel="dns-prefetch" href="https://count.getloli.com">
 	<link rel="dns-prefetch" href="https://v1.hitokoto.cn">
-	<link rel="dns-prefetch" href="https://api.open-meteo.com">
 	<link rel="dns-prefetch" href="https://sdk.51.la">
 	<!-- 关键字体预加载，让文字尽早以最终字体呈现 -->
 	<link rel="preload" href="./static/fonts/LXGWZhenKai.subset.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="preload" href="./static/fonts/Ubuntu-Regular.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="./static/css/style.css">
 	<link rel="stylesheet" href="./static/css/root.css">
+	<link rel="stylesheet" href="./static/css/dashboard.css">
+	<link rel="stylesheet" href="./static/css/terminal.css">
+	<link rel="stylesheet" href="./static/css/fira_code.css">
+	<link rel="stylesheet" href="./static/css/Right.css">
+	<link rel="stylesheet" href="./static/css/simple.css">
 	<!-- Font Awesome 异步加载，不再阻塞首屏渲染 -->
 	<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css" as="style"
 		onload="this.onload=null;this.rel='stylesheet'">
@@ -57,17 +60,59 @@
 			}
 		}, 6000);
 	</script>
-	<!-- 输入特效：必须加 defer。这两个脚本在加载时就要往 document.body 挂画布、
-	     并在 body 上绑事件，放在 head 里同步执行会因 body 尚未生成而报错失效；
-	     defer 让它们等 DOM 解析完再按顺序执行，同时也避免阻塞首屏渲染 -->
-	<script defer src="https://cdn.jsdelivr.net/gh/huangwb8/bloghelper@latest/js/input-with-fire.js"></script>
-	<script defer
-		src="https://cdn.jsdelivr.net/gh/huangwb8/bloghelper@latest/mouse/halo-dream/fairyDustCursor.min.js"></script>
-
 </head>
 
-<body>
+<body oncontextmenu="openMenu(event)">
+	<!-- 右键菜单 -->
+	<div class="menu">
+		<ul class="menu-list01">
+			<li class="menu-item" onclick="showImage('./static/img/wxzsm.png')">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
+					<path
+						d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z" />
+				</svg>
+				<span>赞赏</span>
+			</li>
+			<li class="menu-item" onclick="toggleFullScreen()">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
+					<path
+						d="M200 32H56C42.7 32 32 42.7 32 56V200c0 9.7 5.8 18.5 14.8 22.2s19.3 1.7 26.2-5.2l40-40 79 79-79 79L73 295c-6.9-6.9-17.2-8.9-26.2-5.2S32 302.3 32 312V456c0 13.3 10.7 24 24 24H200c9.7 0 18.5-5.8 22.2-14.8s1.7-19.3-5.2-26.2l-40-40 79-79 79 79-40 40c-6.9 6.9-8.9 17.2-5.2 26.2s12.5 14.8 22.2 14.8H456c13.3 0 24-10.7 24-24V312c0-9.7-5.8-18.5-14.8-22.2s-19.3-1.7-26.2 5.2l-40 40-79-79 79-79 40 40c6.9 6.9 17.2 8.9 26.2 5.2s14.8-12.5 14.8-22.2V56c0-13.3-10.7-24-24-24H312c-9.7 0-18.5 5.8-22.2 14.8s-1.7 19.3 5.2 26.2l40 40-79 79-79-79 40-40c6.9-6.9 8.9-17.2 5.2-26.2S209.7 32 200 32z" />
+				</svg>
+				<span>全屏</span>
+			</li>
+			<li class="menu-item" onclick="refreshPage()">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
+					<path
+						d="M142.9 142.9c62.2-62.2 162.7-62.5 225.3-1L327 183c-6.9 6.9-8.9 17.2-5.2 26.2s12.5 14.8 22.2 14.8H463.5c0 0 0 0 0 0H472c13.3 0 24-10.7 24-24V72c0-9.7-5.8-18.5-14.8-22.2s-19.3-1.7-26.2 5.2L413.4 96.6c-87.6-86.5-228.7-86.2-315.8 1C73.2 122 55.6 150.7 44.8 181.4c-5.9 16.7 2.9 34.9 19.5 40.8s34.9-2.9 40.8-19.5c7.7-21.8 20.2-42.3 37.8-59.8zM16 312v7.6 .7V440c0 9.7 5.8 18.5 14.8 22.2s19.3 1.7 26.2-5.2l41.6-41.6c87.6 86.5 228.7 86.2 315.8-1c24.4-24.4 42.1-53.1 52.9-83.7c5.9-16.7-2.9-34.9-19.5-40.8s-34.9 2.9-40.8 19.5c-7.7 21.8-20.2 42.3-37.8 59.8c-62.2 62.2-162.7 62.5-225.3 1L185 329c6.9-6.9 8.9-17.2 5.2-26.2s-12.5-14.8-22.2-14.8H48.4h-.7H40c-13.3 0-24 10.7-24 24z" />
+				</svg>
+				<span>刷新</span>
+			</li>
+			<li class="menu-item" onclick="goBack()">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="14" viewBox="0 0 448 512">
+					<path
+						d="M0 416c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32C28.7 32 0 60.7 0 96L0 416zM128 256c0-6.7 2.8-13 7.7-17.6l112-104c7-6.5 17.2-8.2 25.9-4.4s14.4 12.5 14.4 22l0 208c0 9.5-5.7 18.2-14.4 22s-18.9 2.1-25.9-4.4l-112-104c-4.9-4.5-7.7-10.9-7.7-17.6z" />
+				</svg>
+				<span>返回</span>
+			</li>
+			<li class="menu-item" onclick="showImage('./static/img/qq.png')">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="18" viewBox="0 0 576 512">
+					<path
+						d="M385.2 167.6c6.4 0 12.6 .3 18.8 1.1C387.4 90.3 303.3 32 207.7 32 100.5 32 13 104.8 13 197.4c0 53.4 29.3 97.5 77.9 131.6l-19.3 58.6 68-34.1c24.4 4.8 43.8 9.7 68.2 9.7 6.2 0 12.1-.3 18.3-.8-4-12.9-6.2-26.6-6.2-40.8-.1-84.9 72.9-154 165.3-154zm-104.5-52.9c14.5 0 24.2 9.7 24.2 24.4 0 14.5-9.7 24.2-24.2 24.2-14.8 0-29.3-9.7-29.3-24.2 .1-14.7 14.6-24.4 29.3-24.4zm-136.4 48.6c-14.5 0-29.3-9.7-29.3-24.2 0-14.8 14.8-24.4 29.3-24.4 14.8 0 24.4 9.7 24.4 24.4 0 14.6-9.6 24.2-24.4 24.2zM563 319.4c0-77.9-77.9-141.3-165.4-141.3-92.7 0-165.4 63.4-165.4 141.3S305 460.7 397.6 460.7c19.3 0 38.9-5.1 58.6-9.9l53.4 29.3-14.8-48.6C534 402.1 563 363.2 563 319.4zm-219.1-24.5c-9.7 0-19.3-9.7-19.3-19.6 0-9.7 9.7-19.3 19.3-19.3 14.8 0 24.4 9.7 24.4 19.3 0 10-9.7 19.6-24.4 19.6zm107.1 0c-9.7 0-19.3-9.7-19.3-19.6 0-9.7 9.7-19.3 19.3-19.3 14.5 0 24.4 9.7 24.4 19.3 .1 10-9.9 19.6-24.4 19.6z" />
+				</svg>
+				<span>联系</span>
+			</li>
+			<li class="menu-item-divider"></li>
+			<li class="menu-item menu-item-danger" onclick="colseMenu()">
+				<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
+					<path
+						d="M64 80c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16H448c8.8 0 16-7.2 16-16V96c0-8.8-7.2-16-16-16H64zM0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zm175 79c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z" />
+				</svg>
+				<span>关闭</span>
+			</li>
+		</ul>
+	</div>
 
+	<!-- 加载动画 -->
 	<div id="zyyo-loading" role="status" aria-label="页面正在加载">
 		<div class="loading-core">
 			<div class="loading-ring">
@@ -84,489 +129,399 @@
 			</div>
 		</div>
 	</div>
+
+	<div id="sence">
+		<div id="background"></div>
+	</div>
 	<div class="zyyo-filter"></div>
 
-	<div class="zyyo-main">
-		<div class="zyyo-left">
-			<div class="logo" style="background-image: url(./static/img/eardog.png);">
-				<!-- <img style="position: absolute;top:-15%;left:-10%;width: 120%; aspect-ratio: 1/1;"
-					src="./static/img/logokuang.png"> 头像框 -->
-			</div>
-			<!-- <div class="signature-card left-div left-des" role="img" aria-label="MuyuDada 手写签名动画">
-				<video src="https://muyuimg.cc.cd/file/blog/Me8XnI0a.webm" type="video/quicktime" autoplay muted
-					playsinline preload="auto"></video>
-			</div> -->
-			<div class="left-div left-des">
-				<div class="left-des-item">
-					<i class="fa-solid fa-location-arrow"></i>湖南-郴州
-				</div>
-				<div class="left-des-item">
-					<i class="fa-solid fa-mug-saucer"></i>摸鱼
-				</div>
-			</div>
-			<div class="left-div hitokoto" aria-live="polite">
-				<div class="hitokoto-label">一言</div>
-				<div id="hitokoto-text" class="hitokoto-text">正在获取一言...</div>
-				<div id="hitokoto-from" class="hitokoto-from"></div>
-			</div>
-			<div class="left-div time-weather-card">
-				<div class="time-heading">
-					<div class="time-weather-title">当地时间</div>
-					<span id="time-period" class="time-period"><i class="time-period-dot"
-							aria-hidden="true"></i>--</span>
-				</div>
-				<div class="local-time"><span id="local-time-main">--:--</span><span id="local-time-seconds"
-						class="local-time-seconds">:--</span></div>
-				<div id="local-date" class="local-date">正在获取日期...</div>
-				<div class="weather-divider"></div>
-				<div class="weather-heading">
-					<div class="time-weather-title">天气预报</div>
-					<button id="weather-toggle" class="weather-toggle" type="button" aria-expanded="false"
-						aria-label="展开今日天气详情" title="展开今日天气详情">
-						<svg class="weather-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M12 3a6 6 0 0 1 5.65 4H18a4 4 0 1 1 0 8H7a5 5 0 1 1 1.1-9.88A6 6 0 0 1 12 3Z">
-							</path>
-							<path d="m8 18 4 3 4-3"></path>
-						</svg>
-					</button>
-				</div>
-				<div id="weather-location" class="weather-location">正在定位...</div>
-				<div id="weather-info" class="weather-info" aria-live="polite">正在获取天气...</div>
-				<div id="weather-forecast" class="weather-forecast" hidden></div>
-			</div>
+	<!-- 自定义光标 -->
+	<div class="node" id="node"></div>
+	<div class="cursor" id="cursor"></div>
 
-			<!-- <div class="left-div device-status-card" id="device-status-card">
-				<div class="device-heading">
-					<div class="time-weather-title">电脑状态</div>
-					<span id="device-badge" class="device-badge is-unknown">
-						<i class="device-badge-dot" aria-hidden="true"></i><span id="device-badge-text">连接中</span>
+	<!-- 顶部气泡提示 -->
+	<div class="popup">
+		<p id="popupText"></p>
+	</div>
+
+	<div class="home-toolbar">
+		<div class="theme-settings">
+			<button class="theme-settings-toggle" type="button" aria-expanded="false"
+				aria-controls="theme-settings-panel" title="主题设置">◐</button>
+			<div class="theme-settings-panel" id="theme-settings-panel" hidden>
+				<label class="theme-setting-row">
+					<span>明暗主题</span>
+					<span class="onoffswitch">
+						<input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch"
+							checked>
+						<label class="onoffswitch-label" for="myonoffswitch">
+							<span class="onoffswitch-inner"></span>
+							<span class="onoffswitch-switch"></span>
+						</label>
 					</span>
-				</div>
-				<div class="device-body">
-					<div class="device-app-icon" id="device-app-icon" aria-hidden="true">
-						<i class="fa-solid fa-desktop" id="device-app-glyph"></i>
-					</div>
-					<div class="device-app-meta">
-						<div id="device-app-name" class="device-app-name">正在获取…</div>
-						<div id="device-app-quip" class="device-app-quip">正在读取本机状态</div>
-					</div>
-				</div>
-				<div id="device-title" class="device-title" hidden></div>
-				<div class="device-foot">
-					<span id="device-updated" class="device-updated">--</span>
-					<button id="device-refresh" class="device-refresh" type="button" aria-label="刷新电脑状态" title="刷新电脑状态">
-						<i class="fa-solid fa-rotate-right"></i>
-					</button>
-				</div>
-			</div> -->
-
-			<div class="left-div left-tag">
-				<div class="left-tag-item">Linux
-				</div>
-				<div class="left-tag-item">狗狗控
-				</div>
-				<div class="left-tag-item">前端
-				</div>
-				<div class="left-tag-item">网页
-				</div>
-				<div class="left-tag-item">游戏
-				</div>
-				<div class="left-tag-item">代码
-				</div>
-			</div>
-			<div class="left-div left-time">
-				<div class="hitokoto-label">TimeLine</div>
-				<ul id="line">
-					<li>
-						<div class="focus"></div>
-						<div>敬请期待———
-						</div>
-						<div>2026.11</div>
-					</li>
-					<li>
-						<div class="focus"></div>
-						<div>本站搭建成功
-						</div>
-						<div>2026.11</div>
-					</li>
-
-					<li>
-						<div class="focus"></div>
-						<div>搭建个人博客</div>
-						<div>2026.8</div>
-					</li>
-				</ul>
+				</label>
+				<label class="theme-setting-row" for="background-opacity">
+					<span>背景透明度</span>
+					<input id="background-opacity" type="range" min="0" max="0.6" step="0.01" value="0.2">
+				</label>
+				<label class="theme-setting-row" for="background-blur">
+					<span>背景模糊度</span>
+					<input id="background-blur" type="range" min="0" max="30" step="1" value="10">
+				</label>
+				<label class="theme-setting-row" for="card-opacity">
+					<span>卡片透明度</span>
+					<input id="card-opacity" type="range" min="0" max="0.95" step="0.01" value="0.62">
+				</label>
+				<label class="theme-setting-row" for="card-blur">
+					<span>卡片模糊度</span>
+					<input id="card-blur" type="range" min="0" max="30" step="1" value="12">
+				</label>
+				<label class="theme-setting-row theme-color-row" for="card-color">
+					<span>卡片颜色</span>
+					<input id="card-color" type="color" value="#eff6fc">
+				</label>
 			</div>
 		</div>
-		<div class="zyyo-right">
-			<header>
-				<div class="index-logo" style="background-image: url(./static/img/eardog.png);">
-					<!-- <img style="position: absolute;top:-15%;left:-10%;width: 120%; aspect-ratio: 1/1;"
-						src="./static/img/logokuang.png"> -->
-					<!-- 头像框 -->
-				</div>
-				<div class="welcome">
-					Hello I' m <span class="gradientText">
-						eardog </span>
-				</div>
-				<div class="description"><span class="purpleText">个人爱好</span> 开发者
-				</div>
-				<div class="description" style="margin-left: 8vw;">淡淡的 <span class="purpleText "
-						style="color: rgb(231, 151, 240);">就会</span> 顺顺的.
-				</div>
-				<div class="music-card">
-					<div class="music-card-title">音乐</div>
-					<div id="music-widget" class="music-widget">
-						<div class="mw-top">
-							<div class="mw-cover">
-								<i class="fa-solid fa-music mw-cover-placeholder" aria-hidden="true"></i>
-								<img id="mw-cover-img" class="mw-cover-img" src="" alt="封面">
-							</div>
-							<div class="mw-info">
-								<div class="mw-title-row">
-									<div class="mw-title-wrap">
-										<h3 id="mw-title" class="mw-title">音乐</h3>
-									</div>
-									<button id="mw-lrc-toggle" class="mw-icon-btn mw-btn-lrc" type="button" title="歌词"
-										aria-label="歌词" aria-expanded="false">
-										<i class="fa-solid fa-grip" aria-hidden="true"></i>
-									</button>
-								</div>
-								<p id="mw-artist" class="mw-artist">暂未播放</p>
-								<div class="mw-meta-row">
-									<div class="mw-time" aria-live="polite">
-										<span id="mw-time-current">0:00</span>
-										<span class="mw-time-sep" aria-hidden="true">/</span>
-										<span id="mw-time-total">0:00</span>
-									</div>
-									<div class="mw-volume-area">
-										<button id="mw-mute" class="mw-icon-btn mw-btn-mute" type="button" title="静音"
-											aria-label="静音">
-											<i class="fa-solid fa-volume-high mw-icon-vol" aria-hidden="true"></i>
-											<i class="fa-solid fa-volume-xmark mw-icon-mute" aria-hidden="true"
-												hidden></i>
-										</button>
-										<div id="mw-volume" class="mw-volume-track" role="slider" aria-label="音量"
-											aria-valuemin="0" aria-valuemax="100" aria-valuenow="70">
-											<div id="mw-volume-bar" class="mw-volume-bar" style="width: 70%;"></div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div id="mw-progress" class="mw-progress" role="slider" aria-label="播放进度" aria-valuemin="0"
-							aria-valuemax="100" aria-valuenow="0" tabindex="0">
-							<div id="mw-progress-bar" class="mw-progress-bar" style="width: 0%;"></div>
-							<div class="mw-progress-thumb" aria-hidden="true"></div>
-						</div>
-						<div class="mw-controls">
-							<button id="mw-mode" class="mw-icon-btn mw-btn-mode" type="button" title="切换播放模式"
-								aria-label="切换播放模式">
-								<i class="fa-solid fa-repeat mw-icon-repeat" aria-hidden="true"></i>
-								<span class="mw-repeat-one-badge" aria-hidden="true">1</span>
-								<i class="fa-solid fa-shuffle mw-icon-shuffle" aria-hidden="true" hidden></i>
-							</button>
-							<button id="mw-prev" class="mw-icon-btn mw-btn-skip" type="button" title="上一首"
-								aria-label="上一首">
-								<i class="fa-solid fa-backward-step" aria-hidden="true"></i>
-							</button>
-							<button id="mw-play" class="mw-play-btn" type="button" title="播放" aria-label="播放">
-								<i class="fa-solid fa-play mw-icon-play" aria-hidden="true"></i>
-								<i class="fa-solid fa-pause mw-icon-pause" aria-hidden="true" hidden></i>
-							</button>
-							<button id="mw-next" class="mw-icon-btn mw-btn-skip" type="button" title="下一首"
-								aria-label="下一首">
-								<i class="fa-solid fa-forward-step" aria-hidden="true"></i>
-							</button>
-							<button id="mw-list-toggle" class="mw-icon-btn mw-btn-list" type="button" title="列表"
-								aria-label="列表" aria-expanded="false">
-								<i class="fa-solid fa-list-ul" aria-hidden="true"></i>
-							</button>
-						</div>
-						<div id="mw-lrc-drawer" class="mw-drawer">
-							<div class="mw-drawer-inner">
-								<div id="mw-lrc" class="mw-lrc" role="listbox" aria-label="歌词">
-									<div class="mw-lrc-empty">暂无歌词</div>
-								</div>
-							</div>
-						</div>
-						<div id="mw-list-drawer" class="mw-drawer">
-							<div class="mw-drawer-inner">
-								<div id="mw-playlist" class="mw-playlist" role="listbox" aria-label="播放列表"></div>
-							</div>
-						</div>
-						<div id="music-player-status" class="music-player-status" aria-live="polite">正在加载歌单...</div>
-					</div>
-				</div>
+	</div>
 
-				<div class="iconRow">
-					<div class="iconContainer">
-						<a class="iconItem" onclick="" href="https://github.com/muyudada">
-							<i class="fa-brands fa-github"></i>
-							<div class="iconTip">Github</div>
-						</a><a class="iconItem" onclick="" href="mailto:2756390658@qq.com">
-							<i class="fa-solid fa-envelope"></i>
-							<div class="iconTip">Mail</div>
-						</a><a class="iconItem" onclick="" href="https://space.bilibili.com/349764263">
-							<i class="fa-brands fa-bilibili"></i>
-							<div class="iconTip">Bilibili</div>
-						</a><a class="iconItem" onclick="window.location.href='https://ifdian.net/a/eardog'"
-							href="javascript:void(0)">
-							<i class="fa-solid fa-hand-holding-dollar"></i>
-							<div class="iconTip">赞助</div>
-						</a><a class="iconItem" onclick="pop('./static/img/qq.png')" href="javascript:void(0)">
-							<i class="fa-brands fa-qq"></i>
-							<div class="iconTip">QQ</div>
-						</a>
+	<main class="home-main">
+		<h2 class="page-title">欢迎访问<span>eardog</span>主页</h2>
+
+		<!-- 个人资料卡：双击进入终端模式 -->
+		<section class="home-hero">
+			<div class="home-card" id="clear">
+				<div id="avatar"></div>
+				<div id="persontag">
+					<div class="hero-head">
+						<h1 class="hero-name">eardog</h1>
+						<span class="hero-alias">个人爱好 · 开发者</span>
 					</div>
-					<div class="theme-settings">
-						<button class="theme-settings-toggle" type="button" aria-expanded="false"
-							aria-controls="theme-settings-panel" title="主题设置">◐</button>
-						<div class="theme-settings-panel" id="theme-settings-panel" hidden>
-							<label class="theme-setting-row">
-								<span>明暗主题</span>
-								<span class="onoffswitch">
-									<input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox"
-										id="myonoffswitch" checked>
-									<label class="onoffswitch-label" for="myonoffswitch">
-										<span class="onoffswitch-inner"></span>
-										<span class="onoffswitch-switch"></span>
-									</label>
-								</span>
-							</label>
-							<label class="theme-setting-row" for="background-opacity">
-								<span>背景透明度</span>
-								<input id="background-opacity" type="range" min="0" max="0.6" step="0.01" value="0.2">
-							</label>
-							<label class="theme-setting-row" for="background-blur">
-								<span>背景模糊度</span>
-								<input id="background-blur" type="range" min="0" max="30" step="1" value="10">
-							</label>
-							<label class="theme-setting-row" for="card-opacity">
-								<span>卡片透明度</span>
-								<input id="card-opacity" type="range" min="0" max="0.95" step="0.01" value="0.62">
-							</label>
-							<label class="theme-setting-row" for="card-blur">
-								<span>卡片模糊度</span>
-								<input id="card-blur" type="range" min="0" max="30" step="1" value="12">
-							</label>
-							<label class="theme-setting-row theme-color-row" for="card-color">
-								<span>卡片颜色</span>
-								<input id="card-color" type="color" value="#eff6fc">
-							</label>
+					<div class="hero-meta">
+						<span class="hero-meta-item"><i class="fa-solid fa-location-arrow"></i>湖南-郴州</span>
+						<span class="hero-meta-item"><i class="fa-solid fa-mug-saucer"></i>摸鱼</span>
+					</div>
+					<p class="hero-motto">淡淡的 <span class="purpleText">就会</span> 顺顺的.</p>
+					<div class="hero-tags">
+						<span class="dw-tag">Linux</span>
+						<span class="dw-tag">狗狗控</span>
+						<span class="dw-tag">前端</span>
+						<span class="dw-tag">网页</span>
+						<span class="dw-tag">游戏</span>
+						<span class="dw-tag">代码</span>
+					</div>
+				</div>
+				<div id="terminal"></div>
+			</div>
+		</section>
+
+		<!-- 一言 -->
+		<div class="home-card hitokoto-card" aria-live="polite">
+			<div class="home-card-title"><i class="fa-solid fa-quote-left"></i>一言</div>
+			<div class="dw-hitokoto-text" id="dw-hitokoto-text">正在获取一言...</div>
+			<div class="dw-hitokoto-from" id="dw-hitokoto-from"></div>
+		</div>
+
+		<!-- 信息面板 -->
+		<div class="home-grid">
+			<!-- 当地时间 + 天气预报 -->
+			<div class="home-card wide dw-time-weather">
+				<div class="dw-tc-layout">
+					<div class="dw-tc-col dw-tc-time">
+						<div class="dw-heading">
+							<div class="dw-title">当地时间</div>
+							<span id="dw-time-period" class="dw-period"><i class="dw-period-dot"
+									aria-hidden="true"></i>--</span>
+						</div>
+						<div class="dw-clock"><span id="dw-local-time-main">--:--</span><span id="dw-local-time-seconds"
+								class="dw-clock-seconds">:--</span></div>
+						<div id="dw-local-date" class="dw-date">正在获取日期...</div>
+					</div>
+					<div class="dw-tc-col dw-tc-weather">
+						<div class="dw-heading">
+							<div class="dw-title">天气预报</div>
+							<button id="dw-weather-toggle" class="dw-weather-toggle" type="button" aria-expanded="false"
+								aria-label="展开今日天气详情" title="展开今日天气详情">
+								<svg class="dw-weather-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+									<path
+										d="M12 3a6 6 0 0 1 5.65 4H18a4 4 0 1 1 0 8H7a5 5 0 1 1 1.1-9.88A6 6 0 0 1 12 3Z">
+									</path>
+									<path d="m8 18 4 3 4-3"></path>
+								</svg>
+							</button>
+						</div>
+						<div id="dw-weather-location" class="dw-weather-location">正在定位...</div>
+						<div id="dw-weather-info" class="dw-weather-info" aria-live="polite">正在获取天气...</div>
+					</div>
+				</div>
+				<div id="dw-weather-forecast" class="dw-weather-forecast" hidden></div>
+			</div>
+
+			<!-- 音乐 -->
+			<div class="home-card music-card">
+				<div class="music-card-title">音乐</div>
+				<div id="music-widget" class="music-widget">
+					<div class="mw-top">
+						<div class="mw-cover">
+							<i class="fa-solid fa-music mw-cover-placeholder" aria-hidden="true"></i>
+							<img id="mw-cover-img" class="mw-cover-img" src="" alt="封面">
+						</div>
+						<div class="mw-info">
+							<div class="mw-title-row">
+								<div class="mw-title-wrap">
+									<h3 id="mw-title" class="mw-title">音乐</h3>
+								</div>
+								<button id="mw-lrc-toggle" class="mw-icon-btn mw-btn-lrc" type="button" title="歌词"
+									aria-label="歌词" aria-expanded="false">
+									<i class="fa-solid fa-grip" aria-hidden="true"></i>
+								</button>
+							</div>
+							<p id="mw-artist" class="mw-artist">暂未播放</p>
+							<div class="mw-meta-row">
+								<div class="mw-time" aria-live="polite">
+									<span id="mw-time-current">0:00</span>
+									<span class="mw-time-sep" aria-hidden="true">/</span>
+									<span id="mw-time-total">0:00</span>
+								</div>
+								<div class="mw-volume-area">
+									<button id="mw-mute" class="mw-icon-btn mw-btn-mute" type="button" title="静音"
+										aria-label="静音">
+										<i class="fa-solid fa-volume-high mw-icon-vol" aria-hidden="true"></i>
+										<i class="fa-solid fa-volume-xmark mw-icon-mute" aria-hidden="true" hidden></i>
+									</button>
+									<div id="mw-volume" class="mw-volume-track" role="slider" aria-label="音量"
+										aria-valuemin="0" aria-valuemax="100" aria-valuenow="70">
+										<div id="mw-volume-bar" class="mw-volume-bar" style="width: 70%;"></div>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
-					<div class="theme-settings">
-						<a class="theme-settings-toggle" href="./jianjie/index.html" title="切换到简洁风格主页"
-							style="display:flex;align-items:center;justify-content:center;text-decoration:none;">
-							<i class="fa-solid fa-wand-magic-sparkles"></i>
-						</a>
+					<div id="mw-progress" class="mw-progress" role="slider" aria-label="播放进度" aria-valuemin="0"
+						aria-valuemax="100" aria-valuenow="0" tabindex="0">
+						<div id="mw-progress-bar" class="mw-progress-bar" style="width: 0%;"></div>
+						<div class="mw-progress-thumb" aria-hidden="true"></div>
 					</div>
+					<div class="mw-controls">
+						<button id="mw-mode" class="mw-icon-btn mw-btn-mode" type="button" title="切换播放模式"
+							aria-label="切换播放模式">
+							<i class="fa-solid fa-repeat mw-icon-repeat" aria-hidden="true"></i>
+							<span class="mw-repeat-one-badge" aria-hidden="true">1</span>
+							<i class="fa-solid fa-shuffle mw-icon-shuffle" aria-hidden="true" hidden></i>
+						</button>
+						<button id="mw-prev" class="mw-icon-btn mw-btn-skip" type="button" title="上一首" aria-label="上一首">
+							<i class="fa-solid fa-backward-step" aria-hidden="true"></i>
+						</button>
+						<button id="mw-play" class="mw-play-btn" type="button" title="播放" aria-label="播放">
+							<i class="fa-solid fa-play mw-icon-play" aria-hidden="true"></i>
+							<i class="fa-solid fa-pause mw-icon-pause" aria-hidden="true" hidden></i>
+						</button>
+						<button id="mw-next" class="mw-icon-btn mw-btn-skip" type="button" title="下一首" aria-label="下一首">
+							<i class="fa-solid fa-forward-step" aria-hidden="true"></i>
+						</button>
+						<button id="mw-list-toggle" class="mw-icon-btn mw-btn-list" type="button" title="列表"
+							aria-label="列表" aria-expanded="false">
+							<i class="fa-solid fa-list-ul" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div id="mw-lrc-drawer" class="mw-drawer">
+						<div class="mw-drawer-inner">
+							<div id="mw-lrc" class="mw-lrc" role="listbox" aria-label="歌词">
+								<div class="mw-lrc-empty">暂无歌词</div>
+							</div>
+						</div>
+					</div>
+					<div id="mw-list-drawer" class="mw-drawer">
+						<div class="mw-drawer-inner">
+							<div id="mw-playlist" class="mw-playlist" role="listbox" aria-label="播放列表"></div>
+						</div>
+					</div>
+					<div id="music-player-status" class="music-player-status" aria-live="polite">正在加载歌单...</div>
 				</div>
-				<div class=""><img
-						src="https://count.getloli.com/@paeardog?theme=capoo-2&padding=7&align=center&scale=1&pixelated=1&darkmode=auto"
-						alt="访问统计" loading="lazy" decoding="async" />
+			</div>
+
+			<!-- 时间线 -->
+			<div class="home-card timeline-card">
+				<div class="home-card-title"><i class="fa-solid fa-clock-rotate-left"></i>TimeLine</div>
+				<div class="timeline-scroll">
+					<ul class="dw-line">
+						<li class="dw-line-item is-focus">
+							<span class="dw-line-dot" aria-hidden="true"></span>
+							<span class="dw-line-text">敬请期待</span>
+							<span class="dw-line-date">2026.11</span>
+						</li>
+						<li class="dw-line-item">
+							<span class="dw-line-dot" aria-hidden="true"></span>
+							<span class="dw-line-text">本站搭建成功</span>
+							<span class="dw-line-date">2026.11</span>
+						</li>
+						<li class="dw-line-item">
+							<span class="dw-line-dot" aria-hidden="true"></span>
+							<span class="dw-line-text">搭建个人博客</span>
+							<span class="dw-line-date">2026.8</span>
+						</li>
+					</ul>
 				</div>
-				<div class="tanChiShe">
+			</div>
+
+			<!-- 访问统计 -->
+			<div class="home-card stat-card">
+				<div class="home-card-title"><i class="fa-solid fa-chart-simple"></i>访问统计</div>
+				<div class="stat-media">
+					<img src="https://count.getloli.com/@paeardog?theme=capoo-2&padding=7&align=center&scale=1&pixelated=1&darkmode=auto"
+						alt="访问统计" loading="lazy" decoding="async">
+				</div>
+			</div>
+
+			<!-- GitHub 贡献 -->
+			<div class="home-card stat-card">
+				<div class="home-card-title"><i class="fa-brands fa-github"></i>GitHub 贡献</div>
+				<div class="stat-media">
 					<img id="tanChiShe"
 						src="https://raw.githubusercontent.com/MuyuDada/MuyuDada/output/github-snake.svg"
 						alt="GitHub contributions snake" loading="lazy" decoding="async">
 				</div>
-			</header>
-
-			<!-- 站点 -->
-			<content>
-				<div class="title"><svg t="1705257422086" class="icon" viewBox="0 0 1024 1024" version="1.1"
-						xmlns="http://www.w3.org/2000/svg" p-id="1891">
-						<path
-							d="M629.333333 202.666667v213.333333h277.333334v448h-512v-213.333333h-277.333334v-448h512z m213.333334 277.333333h-213.333334v170.666667h-170.666666v149.333333h384v-320z m-277.333334-213.333333h-384v320h213.333334v-170.666667h170.666666v-149.333333z m0 213.333333h-106.666666v106.666667h106.666666v-106.666667z"
-							p-id="1892"></path>
-					</svg>站点 </div>
-
-				<div class="projectList">
-
-					<a class="projectItem a" target="_blank" href="https://paeardog.top/">
-						<div class="projectItemLeft">
-							<h1>eardogのRef:rain</h1>
-							<p>记录折腾的日常</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/muyu.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a>
-
-					<!-- <a class="projectItem a" target="_blank" href="https://muyuimg.cc.cd/">
-						<div class="projectItemLeft">
-							<h1>图床</h1>
-							<p>存储收集好看的图片、壁纸</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i2.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://xh520.ct.ws/">
-						<div class="projectItemLeft">
-							<h1>情侣小站</h1>
-							<p>记录恋爱日常</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i7.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://muyupan.cc.cd/">
-						<div class="projectItemLeft">
-							<h1>我的网盘</h1>
-							<p>存放资料和文件</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/openlist.svg" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-				</div>
-
-
-				<!-- 个人项目 -->
-				<div class="title"><svg t="1705257422086" class="icon" viewBox="0 0 1024 1024" version="1.1"
-						xmlns="http://www.w3.org/2000/svg" p-id="1891">
-						<path
-							d="M629.333333 202.666667v213.333333h277.333334v448h-512v-213.333333h-277.333334v-448h512z m213.333334 277.333333h-213.333334v170.666667h-170.666666v149.333333h384v-320z m-277.333334-213.333333h-384v320h213.333334v-170.666667h170.666666v-149.333333z m0 213.333333h-106.666666v106.666667h106.666666v-106.666667z"
-							p-id="1892"></path>
-					</svg>个人项目 </div>
-
-				<div class="projectList">
-
-					<a class="projectItem b" target="_blank" href="https://github.com/paeardog/paeardog.github.io">
-						<div class="projectItemLeft">
-							<h1>本站源码</h1>
-							<p>魔改个人主页</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i1.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a>
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/Traditional-culture">
-						<div class="projectItemLeft">
-							<h1>传统文化</h1>
-							<p>大一互联网大赛项目</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i10.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/widget">
-						<div class="projectItemLeft">
-							<h1>网页小组件</h1>
-							<p>收集的各种网页小组件合集</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i3.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/Smart-notes">
-						<div class="projectItemLeft">
-							<h1>智能便签</h1>
-							<p>纯前端的网页工作便签</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i4.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/VGNKeyboardBattery">
-						<div class="projectItemLeft">
-							<h1>键盘电量插件</h1>
-							<p>TrafficMonitor 显示键盘电量</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i5.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/OpenList-Worker">
-						<div class="projectItemLeft">
-							<h1>网盘后端</h1>
-							<p>网盘的无服务器后端</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i9.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/Firefly-Mod">
-						<div class="projectItemLeft">
-							<h1>博客主题</h1>
-							<p>魔改自用的博客主题</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i12.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-					<!-- <a class="projectItem b" target="_blank" href="https://github.com/MuyuDada/The-daily-mail">
-						<div class="projectItemLeft">
-							<h1>每日邮件</h1>
-							<p>每天自动发送天气卡片</p>
-						</div>
-						<div class="projectItemRight">
-							<img src="./static/img/i15.png" alt="" loading="lazy" decoding="async">
-						</div>
-					</a> -->
-
-				</div>
-
-
-				<div class="title">
-					<svg t="1705257823317" class="icon" viewBox="0 0 1024 1024" version="1.1"
-						xmlns="http://www.w3.org/2000/svg" p-id="7833">
-						<path
-							d="M395.765333 586.570667h-171.733333c-22.421333 0-37.888-22.442667-29.909333-43.381334L364.768 95.274667A32 32 0 0 1 394.666667 74.666667h287.957333c22.72 0 38.208 23.018667 29.632 44.064l-99.36 243.882666h187.050667c27.509333 0 42.186667 32.426667 24.042666 53.098667l-458.602666 522.56c-22.293333 25.408-63.626667 3.392-54.976-29.28l85.354666-322.421333zM416.714667 138.666667L270.453333 522.581333h166.869334a32 32 0 0 1 30.933333 40.181334l-61.130667 230.954666 322.176-367.114666H565.312c-22.72 0-38.208-23.018667-29.632-44.064l99.36-243.882667H416.714667z"
-							p-id="7834"></path>
-					</svg>
-					skills
-				</div>
-				<div class="skill">
-					<img id="skillPc" src="./static/svg/header.webp" alt="" loading="lazy" decoding="async">
-					<img id="skillWap" src="./static/svg/header.webp" alt="" loading="lazy" decoding="async">
-				</div>
-			</content>
+			</div>
 		</div>
+
+		<!-- 社交媒体 -->
+		<section class="home-section">
+			<h2 class="page-title"><span>社交</span>媒体</h2>
+			<div id="linkbox">
+				<a href="https://github.com/paeardog" target="_blank" rel="noopener">
+					<div class="item" style="--color:rgba(53, 53, 53,0.3);background-color:rgb(53, 53, 53)">
+						<i class="fa-brands fa-github"></i><span>Github</span>
+					</div>
+				</a>
+				<a href="https://space.bilibili.com/1130196112" target="_blank" rel="noopener">
+					<div class="item" style="--color:rgba(0, 161, 214,0.3);background-color:rgb(0, 161, 214)">
+						<i class="fa-brands fa-bilibili"></i><span>Bilibili</span>
+					</div>
+				</a>
+				<a href="mailto:paeardog@163.com" target="_blank" rel="noopener">
+					<div class="item" style="--color:rgba(251, 114, 153,0.3);background-color:rgb(251, 114, 153)">
+						<i class="fa-solid fa-envelope"></i><span>邮箱</span>
+					</div>
+				</a>
+				<a href="https://ifdian.net/a/eardog" target="_blank" rel="noopener">
+					<div class="item" style="--color:rgba(247, 165, 61,0.35);background-color:rgb(247, 165, 61)">
+						<i class="fa-solid fa-hand-holding-dollar"></i><span>赞助</span>
+					</div>
+				</a>
+				<a href="#" title="复制微信号" onclick="copyContact('paeardog', this);return false;">
+					<div class="item" style="--color:rgba(7, 193, 96,0.3);background-color:rgb(7, 193, 96)">
+						<i class="fa-brands fa-weixin"></i><span>微信</span>
+					</div>
+				</a>
+				<a href="#" title="复制QQ号" onclick="copyContact('2194173960', this);return false;">
+					<div class="item" style="--color:rgba(53, 57, 59,0.6);background-color:rgb(53, 57, 59)">
+						<i class="fa-brands fa-qq"></i><span>QQ</span>
+					</div>
+				</a>
+			</div>
+		</section>
+
+		<!-- 站点合集 -->
+		<section class="home-section">
+			<h2 class="page-title"><span>站点</span>合集【滑动或左右键可切换】</h2>
+			<div class="workbox">
+				<a href="https://github.com/paeardog" title="访问 Github" target="_blank" rel="noopener">
+					<div class="first"><i class="fa-brands fa-github"></i><span>我的 Github</span></div>
+				</a>
+				<a href="https://paeardog.top/" target="_blank" rel="noopener">
+					<div class="project">
+						<i class="fa-solid fa-house"></i>
+						<h3>eardogのRef:rain</h3>
+						<p>记录折腾的日常</p>
+						<div class="language">
+							<div style="--color:#41d1ff">博客</div>
+						</div>
+					</div>
+				</a>
+				<a href="https://github.com/paeardog" target="_blank" rel="noopener">
+					<div class="last"><i class="fa-solid fa-magnifying-glass"></i><span>更多站点</span></div>
+				</a>
+			</div>
+		</section>
+
+		<!-- 个人项目 -->
+		<section class="home-section">
+			<h2 class="page-title"><span>个人</span>项目【滑动或左右键可切换】</h2>
+			<div class="workbox">
+				<a href="https://github.com/paeardog" title="访问 Github" target="_blank" rel="noopener">
+					<div class="first"><i class="fa-brands fa-github"></i><span>我的 Github</span></div>
+				</a>
+				<a href="https://github.com/paeardog/paeardog.github.io" target="_blank" rel="noopener">
+					<div class="project">
+						<i class="fa-solid fa-code"></i>
+						<h3>本站源码</h3>
+						<p>魔改个人主页</p>
+						<div class="language">
+							<div style="--color:#f1e05a">HTML</div>
+						</div>
+					</div>
+				</a>
+				<a href="https://github.com/paeardog" target="_blank" rel="noopener">
+					<div class="last"><i class="fa-solid fa-magnifying-glass"></i><span>更多项目</span></div>
+				</a>
+			</div>
+		</section>
+
+		<!-- 技能 -->
+		<section class="home-section">
+			<h2 class="page-title">skills</h2>
+			<div class="home-card skills-card">
+				<img src="./static/svg/header.webp" alt="skills" loading="lazy" decoding="async">
+			</div>
+		</section>
+
+		<footer>
+			<div class="footer-inner">
+				<span class="footer-copy">Muyu © 2026</span>
+				<span class="footer-runtime" title="网站运行时间">
+					本站已运行
+					<span id="site-runtime" class="footer-runtime-time">-- 天 -- 时 -- 分 -- 秒</span>
+				</span>
+				<a class="footer-icp" href="https://icp.gov.moe/?keyword=20265180/" target="_blank" rel="noopener">萌ICP备
+					20265180号</a>
+			</div>
+		</footer>
+	</main>
+
+	<!-- 向下滑动提示（移动端） -->
+	<div class="scroll-down">
+		<span>向下滑动查看</span>
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+			<path d="M0 0h24v24H0z" fill="none" />
+			<path d="M12 16l-6-6h12z" />
+		</svg>
 	</div>
-	<footer>
-		<div class="footer-inner">
-			<span class="footer-copy">Muyu © 2026</span>
-			<span class="footer-sep" aria-hidden="true"></span>
-			<span class="footer-runtime" title="网站运行时间">
-				<span class="footer-runtime-dot" aria-hidden="true"></span>
-				本站已运行
-				<span id="site-runtime" class="footer-runtime-time">-- 天 -- 时 -- 分 -- 秒</span>
-			</span>
-			<span class="footer-sep" aria-hidden="true"></span>
-			<a class="footer-icp" href="https://icp.gov.moe/?keyword=20265180/" target="_blank" rel="noopener">萌ICP备
-				20265180号</a>
-		</div>
-	</footer>
-	<div class="tc">
-		<div onclick="" class="tc-main">
-			<img class="tc-img" src="" alt="" srcset="">
-		</div>
 
-	</div>
+	<script src="./static/js/jquery.min.js"></script>
+	<script src="./static/js/nodecursor-jquery.js"></script>
+	<script>
+		// 主页歌单：沿用原主页的网易云歌单 ID
+		window.MUSIC_PLAYLIST_CONFIG = {
+			server: "netease",
+			type: "playlist",
+			id: "17445722740",
+			api: "https://api.qijieya.cn/meting/?server=:server&type=:type&id=:id"
+		};
+	</script>
+	<script src="./static/js/layout.js"></script>
+	<script src="./static/js/dashboard.js"></script>
+	<script src="./static/js/terminal.js"></script>
+	<script src="./static/js/music.js"></script>
+	<script src="./static/js/Right.js"></script>
+	<script src="./static/js/simple.js"></script>
+	<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js" defer></script>
+	<script>
+		// 统计脚本延迟到页面加载完成后初始化，不阻塞主流程
+		window.addEventListener('load', function () {
+			if (typeof LA !== "undefined" && LA.init) {
+				LA.init({ id: "KFqltKSkJgQTGD9l", ck: "KFqltKSkJgQTGD9l" });
+			}
+		});
+	</script>
 </body>
-<script src="./static/js/script.js" defer></script>
-<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js" defer></script>
-<script>
-	// 统计脚本延迟到页面加载完成后初始化，不阻塞主流程
-	window.addEventListener('load', function () {
-		if (typeof LA !== "undefined" && LA.init) {
-			LA.init({ id: "KFqltKSkJgQTGD9l", ck: "KFqltKSkJgQTGD9l" });
-		}
-	});
-</script>
 
 </html>
