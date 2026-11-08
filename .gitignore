@@ -1,0 +1,22 @@
+# AI 助手的工作记忆目录（含内部笔记，不随仓库公开）
+.workbuddy/
+.workbuddy-ai/
+
+# 本机上报口令：不能进公开仓库
+tools/report-token.local
+
+# 备用通道（GitHub Gist）的 gist id 与令牌：同样不能进公开仓库
+tools/gist-id.local
+tools/github-token.local
+
+# wrangler 本地缓存（含账号 id，不进仓库）
+worker/.wrangler/
+.wrangler/
+
+# 本地分析笔记：只在本地留存，不随站点公开
+tonks-top-实现分析.md
+
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

@@ -1,0 +1,16 @@
+# Muyu 个人主页 — Caddy 配置
+#
+# 纯静态站点托管。天气数据已改为浏览器直连和风天气（QWeather），
+# 不需要任何服务端反代，所以这里只剩 file_server。
+#
+# 变更记录（2026-09-30）：原来有一段 /api/weather/* 反代中国天气网 sk_2d 实况接口
+# （因为上游要求 Referer 路径非空，纯静态页面满足不了，只能服务端伪造）。
+# 现在「气象站实测」增强层已整体移除，天气改走和风 v1，该反代段一并删掉。
+#
+# 用法：把 example.com 换成你的域名后 `docker compose up -d`。
+
+example.com {
+    root * /var/www/html
+    encode zstd gzip
+    file_server
+}

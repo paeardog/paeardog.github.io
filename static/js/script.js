@@ -1,0 +1,2399 @@
+console.log('%cCopyright © 2024 zyyo.net',
+    'background-color: #ff00ff; color: white; font-size: 24px; font-weight: bold; padding: 10px;'
+);
+console.log('%c   /\\_/\\', 'color: #8B4513; font-size: 20px;');
+console.log('%c  ( o.o )', 'color: #8B4513; font-size: 20px;');
+console.log(' %c  > ^ <', 'color: #8B4513; font-size: 20px;');
+console.log('  %c /  ~ \\', 'color: #8B4513; font-size: 20px;');
+console.log('  %c/______\\', 'color: #8B4513; font-size: 20px;');
+
+// 修改这里的 id 即可替换为自己的网易云歌单（歌单链接中的 id）。
+var musicPlaylistConfig = {
+    server: "netease",
+    type: "playlist",
+    id: "3778678",
+    api: "https://api.qijieya.cn/meting/?server=:server&type=:type&id=:id"
+};
+
+// 天气数据来自和风天气（QWeather），需要 API Key，见下方 weatherConfig 末尾。
+//
+// 【定位策略】weatherConfig.locationMode
+//   "auto"  —— 默认。定位访问者所在地：浏览器 GPS（带跑偏校验）→ IP 定位 → 兜底城市。
+//   "fixed" —— 不做任何定位，永远显示下面写死的兜底城市。
+//
+// 关于定位可靠性（踩过的坑，别改回去）：
+//   1) 浏览器 GPS 在电脑端其实是 WiFi 定位库，经常偏到隔壁市 → 用 maxAutoDistanceKm 校验；
+//   2) 国内宽带 IP 归属地会跨市漂移，实测同一个 IP 被不同 IP 库分别解析成
+//      涞源 / 保定 / 石家庄 / 承德，跨度 300 km → 所以地名只用于「显示」，
+//      取数一律用 IP 库返回的经纬度，不用地名反查坐标；
+//   3) 中文地名库不可靠（「保定」会命中云南的一个村，「涞源县」查不到），
+//      绝不要用城市名反查坐标；和风 v1 也是直接吃经纬度，同样不需要反查；
+//   4) 定位类接口偶尔会挂住不返回 → 必须有超时，否则页面永远停在「正在定位...」。
+//
+// fallback* 是「所有定位手段都失败」时的兜底坐标，也是 fixed 模式使用的坐标。
+var weatherConfig = {
+    locationMode: "auto",
+    fallbackCity: "涞源",
+    fallbackLatitude: 39.3602,
+    fallbackLongitude: 114.6940,
+    // 定位点离兜底城市超过该公里数即判定为跑偏，继续往下一级回退
+    maxAutoDistanceKm: 80,
+    // 单个定位/天气请求的超时（毫秒），避免页面一直卡在「正在定位...」
+    requestTimeoutMs: 8000,
+    // 整个定位链的总时限（毫秒）。多级回退是串行的，
+    // 若每个源都挂住不返回，累加会把「正在定位...」拖到十几秒，所以必须封顶。
+    locationDeadlineMs: 6000,
+    // 天气自动刷新间隔（分钟）；切回前台时若已过期也会立即刷新
+    refreshIntervalMinutes: 15,
+    // 备用 IP 定位源：主源失败或返回坐标明显跑偏时依次尝试（都必须支持 CORS 跨域）
+    // 注意：ip-api.com 的 HTTPS 需付费、ipinfo.io 免费额度有限，故未启用
+    ipApis: [
+        "https://v2.xxapi.cn/api/ip",
+        "https://whois.pconline.com.cn/ipJson.jsp?json=true"
+    ],
+
+    // ===================== 和风天气（QWeather）=====================
+    // 认证必须走请求头 X-QW-Api-Key；旧的 ?key= 查询参数已废弃。
+    // API Host 是每个账号专属的，不是公共的 api.qweather.com
+    // （官方公告：公共地址自 2026 年起逐步停服），换账号时这两项都要改。
+    //
+    // ⚠️ 这是纯静态站点，Key 随仓库公开、任何人可见并可消耗你的额度。
+    //    如需保密，必须改成自建后端代理，把 Key 留在服务端。
+    qweatherApiKey: "88ae3e30712d4c7ea92e8b8b209949fb",
+    qweatherApiHost: "https://n27p3u5uhf.re.qweatherapi.com"
+};
+
+// 电脑状态卡片：纯静态站点读不到本机信息，所以由本机脚本定时上报到
+// Cloudflare Worker（见仓库 worker/ 与 tools/），页面只负责读。
+//
+// endpoint 留空 = 未部署，整张卡片自动隐藏，不会在页面上留一块空白。
+var deviceStatusConfig = {
+    // Worker 读接口地址。
+    // 注意：不要用 *.workers.dev 域名 —— 该域名在部分网络下会被 DNS 污染，
+    // 解析到不可达的 IP，表现为"关掉代理就取不到状态"。这里走自己的
+    // Cloudflare 自定义域名（见 worker/wrangler.toml 里的 routes 配置）。
+    endpoint: "https://muyuhome.cc.cd/api/device/status",
+
+    // 前端轮询间隔（秒）。
+    // 本机侧是「变化驱动 + 心跳」：前台应用一换就立刻上报，没换时在线 5 分钟
+    // 才发一次心跳。所以这里没必要跟着 30 秒跑，60 秒足够，还能省一半读取。
+    refreshIntervalSeconds: 60,
+    // 单个请求超时（毫秒），超时按「离线」处理，不会一直转圈。
+    requestTimeoutMs: 8000,
+    // 离线判定阈值（秒）的兜底值。
+    // 主通道的权威值在 Worker 侧（按上报来的 heartbeatSeconds 自动推算，随
+    // staleAfterSeconds 回传）；备用通道没有服务端判活，只能用这里的值配合
+    // 快照里的 heartbeatSeconds 在本地算一遍。
+    staleAfterSeconds: 600,
+    // 页面切回前台时，距上次成功刷新超过该秒数就立刻补一次。
+    visibilityRefreshAfterSeconds: 20,
+
+    // 备用通道：主通道（Cloudflare Worker）取不到新鲜数据时的兜底来源。
+    // 本机上报脚本会把同一份记录再写一份到 GitHub Gist（见 tools/report-device.ps1），
+    // 这里指向它的 raw 地址。留空 = 不用备用通道。
+    //
+    // 为什么需要它：主通道依赖 Cloudflare（域名被污染、Worker 故障、额度耗尽都可能失效），
+    // 而 GitHub raw 是另一套完全独立的链路，同时挂掉的概率很低。
+    //
+    // 代价：GitHub raw 的 CDN 缓存是 300 秒，不带参数直接读有可能拿到旧副本。
+    // 好在实测给 URL 挂一个随机查询串就能让 CDN 回 MISS（缓存键含 query string），
+    // 所以下面加了 cache-bust 参数，快照基本能保持最新。即便如此，仍要读快照里的
+    // reportedAt 在本地判一次时效 —— 万一 CDN 还是发了旧副本，也不会把
+    // 「早就离线」显示成「在线」。
+    fallbackEndpoint: "https://gist.githubusercontent.com/MuyuDada/ddca5e9cfef3026b2503b56486cbb365/raw/device.json",
+
+    // 进程名（小写）→ Font Awesome 图标。
+    // 值里带上字体族：品牌图标写 "fa-brands fa-xxx"，通用图标写 "fa-solid fa-xxx"。
+    // Font Awesome 7 的品牌图标必须用 fa-brands，否则会渲染成方框或错字形。
+    iconMap: {
+        // —— 编辑器 / IDE（FA 没有 vscode 品牌图标，统一用代码图标）——
+        code: "fa-solid fa-code",
+        cursor: "fa-solid fa-code",
+        devenv: "fa-solid fa-code",
+        idea64: "fa-solid fa-code",
+        pycharm64: "fa-solid fa-code",
+        webstorm64: "fa-solid fa-code",
+        goland64: "fa-solid fa-code",
+        clion64: "fa-solid fa-code",
+        rider64: "fa-solid fa-code",
+        sublime_text: "fa-solid fa-code",
+        androidstudio64: "fa-brands fa-android",
+
+        // —— 终端 ——
+        windowsterminal: "fa-solid fa-terminal",
+        wt: "fa-solid fa-terminal",
+        powershell: "fa-solid fa-terminal",
+        pwsh: "fa-solid fa-terminal",
+        cmd: "fa-solid fa-terminal",
+        conhost: "fa-solid fa-terminal",
+        "git-bash": "fa-solid fa-terminal",
+        mintty: "fa-solid fa-terminal",
+
+        // —— 浏览器 ——
+        msedge: "fa-brands fa-edge",
+        msedgewebview2: "fa-brands fa-edge",
+        chrome: "fa-brands fa-chrome",
+        firefox: "fa-brands fa-firefox-browser",
+        brave: "fa-brands fa-brave",
+        opera: "fa-brands fa-opera",
+        safari: "fa-brands fa-safari",
+        iexplore: "fa-brands fa-internet-explorer",
+
+        // —— 通讯 / 社交 ——
+        wechat: "fa-brands fa-weixin",
+        weixin: "fa-brands fa-weixin",
+        qq: "fa-brands fa-qq",
+        tim: "fa-brands fa-qq",
+        telegram: "fa-brands fa-telegram",
+        discord: "fa-brands fa-discord",
+        skype: "fa-brands fa-skype",
+        whatsapp: "fa-brands fa-whatsapp",
+        line: "fa-brands fa-line",
+        viber: "fa-brands fa-viber",
+        dingtalk: "fa-solid fa-comment-dots",
+        wework: "fa-solid fa-comment-dots",
+        feishu: "fa-solid fa-comment-dots",
+        lark: "fa-solid fa-comment-dots",
+
+        // —— 音乐 ——
+        cloudmusic: "fa-solid fa-music",
+        qqmusic: "fa-solid fa-music",
+        spotify: "fa-brands fa-spotify",
+        itunes: "fa-brands fa-itunes",
+        foobar2000: "fa-solid fa-music",
+        aimp: "fa-solid fa-music",
+
+        // —— 影音 ——
+        potplayer: "fa-solid fa-film",
+        potplayermini64: "fa-solid fa-film",
+        vlc: "fa-solid fa-film",
+        mpv: "fa-solid fa-film",
+        bilibili: "fa-brands fa-bilibili",
+        youtube: "fa-brands fa-youtube",
+        vimeo: "fa-brands fa-vimeo",
+        twitch: "fa-brands fa-twitch",
+        obs64: "fa-solid fa-video",
+
+        // —— 游戏 ——
+        steam: "fa-brands fa-steam",
+        steamwebhelper: "fa-brands fa-steam",
+        epicgameslauncher: "fa-solid fa-gamepad",
+        genshinimpact: "fa-solid fa-gamepad",
+        yuanshen: "fa-solid fa-gamepad",
+        starrail: "fa-solid fa-gamepad",
+        dota2: "fa-solid fa-gamepad",
+        cs2: "fa-solid fa-gamepad",
+        tslgame: "fa-solid fa-gamepad",
+        "deltaforceclient-win64-shipping": "fa-solid fa-crosshairs",
+        delta_force_launcher: "fa-solid fa-crosshairs",
+        nzmclient: "fa-solid fa-gun",
+        nzm_launcher: "fa-solid fa-gun",
+        wegame: "fa-solid fa-gamepad",
+        unity: "fa-brands fa-unity",
+        blender: "fa-brands fa-blender",
+        xbox: "fa-brands fa-xbox",
+        playstation: "fa-brands fa-playstation",
+
+        // —— 办公 / 文档 ——
+        winword: "fa-solid fa-file-word",
+        excel: "fa-solid fa-file-excel",
+        powerpnt: "fa-solid fa-file-powerpoint",
+        onenote: "fa-solid fa-note-sticky",
+        wps: "fa-solid fa-file-lines",
+        et: "fa-solid fa-file-excel",
+        wpp: "fa-solid fa-file-powerpoint",
+        acrobat: "fa-solid fa-file-pdf",
+        acrord32: "fa-solid fa-file-pdf",
+        sumatrapdf: "fa-solid fa-file-pdf",
+        notepad: "fa-solid fa-file-lines",
+        "notepad++": "fa-solid fa-file-lines",
+        typora: "fa-solid fa-file-lines",
+        obsidian: "fa-solid fa-book",
+        zotero: "fa-solid fa-book",
+        notion: "fa-brands fa-notion",
+        trello: "fa-brands fa-trello",
+        jira: "fa-brands fa-jira",
+        confluence: "fa-brands fa-confluence",
+
+        // —— 设计 / 创作 ——
+        photoshop: "fa-solid fa-image",
+        illustrator: "fa-solid fa-pen-nib",
+        figma: "fa-brands fa-figma",
+        sketch: "fa-brands fa-sketch",
+        afterfx: "fa-solid fa-wand-magic-sparkles",
+        premiere: "fa-solid fa-film",
+
+        // —— 开发工具 ——
+        "github desktop": "fa-brands fa-github",
+        gitkraken: "fa-brands fa-git-alt",
+        sourcetree: "fa-brands fa-git-alt",
+        postman: "fa-solid fa-paper-plane",
+        docker: "fa-brands fa-docker",
+        navicat: "fa-solid fa-database",
+        dbeaver: "fa-solid fa-database",
+
+        // —— 服务器 / 网络 ——
+        filezilla: "fa-solid fa-server",
+        winscp: "fa-solid fa-server",
+        putty: "fa-solid fa-server",
+        mobaxterm: "fa-solid fa-server",
+        xshell: "fa-solid fa-server",
+        clash: "fa-solid fa-shield-halved",
+        "clash-verge": "fa-solid fa-shield-halved",
+        v2rayn: "fa-solid fa-shield-halved",
+        openlist: "fa-solid fa-cloud",
+        alist: "fa-solid fa-cloud",
+
+        // —— 下载 / 压缩 ——
+        idman: "fa-solid fa-download",
+        thunder: "fa-solid fa-download",
+        qbittorrent: "fa-solid fa-download",
+        motrix: "fa-solid fa-download",
+        "7zfm": "fa-solid fa-file-zipper",
+        winrar: "fa-solid fa-file-zipper",
+        bandizip: "fa-solid fa-file-zipper",
+
+        // —— 系统工具 ——
+        explorer: "fa-solid fa-folder-open",
+        taskmgr: "fa-solid fa-gauge-high",
+        snippingtool: "fa-solid fa-crop-simple",
+        everything: "fa-solid fa-magnifying-glass",
+        mstsc: "fa-solid fa-desktop",
+        calculator: "fa-solid fa-calculator",
+        control: "fa-solid fa-sliders",
+        windbg: "fa-solid fa-bug"
+    },
+
+    // 进程名没命中时，按「应用名」里的关键词兜底选图标
+    keywordIcons: [
+        { match: "音乐", icon: "fa-solid fa-music" },
+        { match: "浏览器", icon: "fa-solid fa-globe" },
+        { match: "终端", icon: "fa-solid fa-terminal" },
+        { match: "代码", icon: "fa-solid fa-code" },
+        { match: "编辑器", icon: "fa-solid fa-code" },
+        { match: "设计", icon: "fa-solid fa-pen-ruler" },
+        { match: "表格", icon: "fa-solid fa-file-excel" },
+        { match: "文档", icon: "fa-solid fa-file-lines" },
+        { match: "视频", icon: "fa-solid fa-film" },
+        { match: "播放", icon: "fa-solid fa-film" }
+    ]
+};
+
+function timePeriodText(hour) {
+    if (hour < 5) {
+        return "凌晨";
+    }
+    if (hour < 9) {
+        return "早上";
+    }
+    if (hour < 12) {
+        return "上午";
+    }
+    if (hour < 14) {
+        return "中午";
+    }
+    if (hour < 18) {
+        return "下午";
+    }
+    if (hour < 19) {
+        return "傍晚";
+    }
+    return "晚上";
+}
+
+function updateLocalTime() {
+    var timeElement = document.getElementById("local-time-main");
+    var secondsElement = document.getElementById("local-time-seconds");
+    var periodElement = document.getElementById("time-period");
+    var dateElement = document.getElementById("local-date");
+
+    if (!timeElement || !dateElement) {
+        return;
+    }
+
+    var pad = function (value) {
+        return String(value).padStart(2, "0");
+    };
+    var now = new Date();
+
+    timeElement.textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    if (secondsElement) {
+        secondsElement.textContent = ":" + pad(now.getSeconds());
+    }
+    if (periodElement) {
+        periodElement.textContent = timePeriodText(now.getHours());
+    }
+    dateElement.textContent = now.toLocaleDateString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long"
+    });
+}
+
+// ===================== 和风天气（QWeather）字段映射 =====================
+// 和风 v1 的 condition.text 已经是本地化中文，直接展示即可；
+// condition.code 只在挑图标时当兜底（官方图标代码见 dev.qweather.com/docs/resource/icons/）。
+function weatherIconByText(text, code) {
+    var t = String(text || "");
+    if (/霾|浮尘|扬沙|沙尘/.test(t)) return "😷";
+    if (/雷/.test(t)) return "⛈️";
+    if (/雪|米雪/.test(t)) return "🌨️";
+    if (/雨/.test(t)) return "🌧️";
+    if (/雾/.test(t)) return "🌫️";
+    if (/阴/.test(t)) return "☁️";
+    if (/多云|少云/.test(t)) return "⛅";
+    if (/晴/.test(t)) return "☀️";
+    return weatherIconByCode(code);
+}
+
+// condition.code 兜底：按官方代码段归类
+function weatherIconByCode(code) {
+    var n = parseInt(code, 10);
+    if (!Number.isFinite(n)) return "🌡️";
+    if ((n >= 100 && n <= 103) || (n >= 150 && n <= 153)) return "☀️";
+    if (n === 104) return "☁️";
+    if (n >= 200 && n <= 213) return "🌬️";
+    if (n >= 300 && n <= 399) return "🌧️";
+    if (n >= 400 && n <= 499) return "🌨️";
+    if (n >= 500 && n <= 515) return "🌫️";
+    return "🌡️";
+}
+
+function windDirection(degrees) {
+    var directions = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"];
+    return directions[Math.round(degrees / 45) % 8];
+}
+
+function formatWeatherTime(value) {
+    return value ? value.slice(11, 16) : "--:--";
+}
+
+function formatAirValue(value, unit) {
+    var num = Number(value);
+    if (value == null || !Number.isFinite(num)) {
+        return "暂无数据";
+    }
+    // CO 这类浓度很小（mg/m³），四舍五入会变成 0，所以小于 10 时保留一位小数
+    var text = num >= 10 ? String(Math.round(num)) : num.toFixed(1);
+    return text + " " + (unit || "μg/m³");
+}
+
+// 取当前天气现象的中文描述：和风直接给本地化文本
+function currentWeatherText(current) {
+    return (current && current.condition && current.condition.text) || "天气未知";
+}
+
+// 天气现象对应的图标：先按中文关键字挑，挑不到再按 condition.code 归类
+function currentWeatherIcon(current) {
+    var code = current && current.condition ? current.condition.code : null;
+    return weatherIconByText(currentWeatherText(current), code);
+}
+
+// 记录最近一次成功解析出的取数点，供定时刷新复用
+var resolvedWeatherLocation = null;
+var lastWeatherFetchAt = 0;
+
+// 和风 API Host 是账号专属的，末尾可能带斜杠，统一去掉
+function qweatherUrl(path) {
+    var host = String(weatherConfig.qweatherApiHost || "").replace(/\/+$/, "");
+    return host + path;
+}
+
+// 和风 v1 的数值字段统一是 { value, unit } 对象，取标量
+function pickValue(node) {
+    if (node && typeof node === "object" && node.value !== undefined) {
+        return node.value;
+    }
+    return node;
+}
+
+// 判断取到的值是不是可用数字。
+// 不能直接用 Number.isFinite(Number(v))：Number(null) 和 Number("") 都是 0，
+// 会把「字段缺失」误判成真实的 0，详情卡片就会显示 0% / 0 hPa 这种假数据。
+function isNum(value) {
+    return value !== null && value !== undefined && value !== "" &&
+        Number.isFinite(Number(value));
+}
+
+// 污染物浓度表：code -> { value, unit }。单位随污染物而变（CO 是 mg/m³，其余多为 μg/m³）
+function airQualityMap(airData) {
+    var map = {};
+    var list = (airData && airData.pollutants) || [];
+    for (var i = 0; i < list.length; i++) {
+        var item = list[i];
+        if (!item || !item.code) {
+            continue;
+        }
+        map[item.code] = {
+            value: item.concentration ? item.concentration.value : null,
+            unit: item.concentration ? item.concentration.unit : null
+        };
+    }
+    return map;
+}
+
+// 取 AQI：优先中国标准 cn-mee，没有就退到第一个指数
+function airQualityIndex(airData) {
+    var list = (airData && airData.indexes) || [];
+    var chosen = null;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].code === "cn-mee") {
+            chosen = list[i];
+            break;
+        }
+    }
+    if (!chosen) {
+        chosen = list[0];
+    }
+    return chosen || null;
+}
+
+function loadWeather(latitude, longitude, locationName) {
+    var weatherElement = document.getElementById("weather-info");
+    var forecastElement = document.getElementById("weather-forecast");
+    var locationElement = document.getElementById("weather-location");
+
+    if (!weatherElement) {
+        return;
+    }
+
+    resolvedWeatherLocation = {
+        latitude: latitude,
+        longitude: longitude,
+        name: locationName
+    };
+    lastWeatherFetchAt = Date.now();
+
+    // 和风 v1 的路径参数：纬度在前、经度在后，最多两位小数
+    var coord = Number(latitude).toFixed(2) + "/" + Number(longitude).toFixed(2);
+    var timeout = weatherConfig.requestTimeoutMs;
+    var authInit = { headers: { "X-QW-Api-Key": weatherConfig.qweatherApiKey } };
+
+    var currentRequest = fetchWithTimeout(
+        qweatherUrl("/weather/v1/current/" + coord + "?localTime=true"),
+        timeout, undefined, authInit
+    ).then(function (response) {
+        return response.json();
+    });
+
+    // 每日预报只用于日出日落和降水概率，失败时降级为「暂无数据」，
+    // 不该把整个天气卡片拖成不可用
+    var dailyRequest = fetchWithTimeout(
+        qweatherUrl("/weather/v1/daily/" + coord + "?days=1&localTime=true"),
+        timeout, undefined, authInit
+    ).then(function (response) {
+        return response.json();
+    }).catch(function (error) {
+        console.warn("每日预报获取失败，日出日落与降水概率显示暂无数据", error);
+        return null;
+    });
+
+    // 空气质量是锦上添花，失败不该拖垮整个天气卡片
+    var airRequest = fetchWithTimeout(
+        qweatherUrl("/airquality/v1/current/" + coord),
+        timeout, undefined, authInit
+    ).then(function (response) {
+        return response.json();
+    }).catch(function (error) {
+        console.warn("空气质量获取失败，详情中显示暂无数据", error);
+        return null;
+    });
+
+    Promise.all([currentRequest, dailyRequest, airRequest])
+        .then(function (results) {
+            var current = results[0];
+            var daily = results[1];
+            var air = results[2];
+
+            // 气温是必填项：拿不到就当作整个请求失败，走兜底文案
+            var temp = pickValue(current && current.temperature);
+            if (!isNum(temp)) {
+                throw new Error("和风天气未返回有效气温");
+            }
+            var text = currentWeatherText(current);
+            var icon = currentWeatherIcon(current);
+
+            if (locationElement && locationName) {
+                locationElement.textContent = "⌖ " + locationName;
+            }
+            weatherElement.classList.remove("is-muted");
+            weatherElement.innerHTML =
+                "<div class=\"weather-main\"><span class=\"weather-icon\">" +
+                icon + "</span><strong>" +
+                Math.round(Number(temp)) + "°</strong><span>" +
+                text + "</span></div>";
+
+            if (!forecastElement) {
+                return;
+            }
+
+            var day = daily && daily.days ? daily.days[0] : null;
+            var astro = (day && day.astro) || {};
+            var pollutants = airQualityMap(air);
+            var index = airQualityIndex(air);
+
+            // 实时接口没有降水概率，取今天白天/夜间两者的较大值
+            var dayProb = day && day.daytime && day.daytime.precipitation
+                ? Number(day.daytime.precipitation.probability) : null;
+            var nightProb = day && day.nighttime && day.nighttime.precipitation
+                ? Number(day.nighttime.precipitation.probability) : null;
+            var prob = Math.max(
+                Number.isFinite(dayProb) ? dayProb : 0,
+                Number.isFinite(nightProb) ? nightProb : 0
+            );
+
+            // 湿度、云量、降水概率在和风 v1 里都是 [0,1] 小数
+            var humidity = pickValue(current.humidity);
+            var cloudCover = pickValue(current.cloudCover);
+            var visibility = pickValue(current.visibility);
+            var feelsLike = pickValue(current.feelsLike);
+            var pressure = pickValue(current.pressure);
+            var precipAmount = current.precipitation
+                ? pickValue(current.precipitation.amount) : null;
+            var windDegree = current.wind && current.wind.direction
+                ? current.wind.direction.degree : null;
+            var windScale = current.wind ? current.wind.scale : null;
+
+            // 注意 Number(null) 是 0，所以必须先判空再转数字，否则缺字段会显示「北风 null级」
+            var windText = (windDegree != null && windScale != null)
+                ? windDirection(Number(windDegree)) + "风 " + windScale + "级"
+                : "暂无数据";
+
+            // 空气质量卡片只显示 AQI 与等级，具体污染物浓度统一放下面的「污染物浓度」块
+            var pm25 = pollutants.pm2p5 || {};
+            var airText = "暂无数据";
+            if (index) {
+                airText = "AQI " + (index.aqiDisplay != null ? index.aqiDisplay : index.aqi) +
+                    (index.category ? " " + index.category : "");
+            }
+
+            // 和风要求标注数据来源。attributions 给的是 URL，做成可点链接更友好；
+            // 但这是外部数据，必须转义后再拼进 innerHTML。
+            var attributions = (current.metadata && current.metadata.attributions) || [];
+            var sourceNote = "<div class=\"weather-station-note\">🌤️ 数据来源：";
+            if (attributions.length) {
+                sourceNote += attributions.map(function (item) {
+                    var text = String(item);
+                    return /^https?:\/\//.test(text)
+                        ? "<a href=\"" + escapeHtml(text) + "\" target=\"_blank\" rel=\"noopener noreferrer\">和风天气</a>"
+                        : escapeHtml(text);
+                }).join(" / ");
+            } else {
+                sourceNote += "和风天气";
+            }
+            sourceNote += "</div>";
+
+            forecastElement.innerHTML =
+                "<div class=\"weather-detail-heading\">今日天气详情" +
+                "<span>" + text + " " + icon + "</span></div>" +
+                "<div class=\"weather-detail-grid\">" +
+                "<div class=\"weather-detail-card\"><i>🌬️</i><span><em>风力</em><b>" + windText + "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>👁️</i><span><em>能见度</em><b>" +
+                (isNum(visibility) ? (Number(visibility) / 1000).toFixed(1) + " km" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>🌡️</i><span><em>体感温度</em><b>" +
+                (isNum(feelsLike) ? Math.round(Number(feelsLike)) + "°" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>💧</i><span><em>湿度</em><b>" +
+                (isNum(humidity) ? Math.round(Number(humidity) * 100) + "%" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>⏱️</i><span><em>气压</em><b>" +
+                (isNum(pressure) ? Math.round(Number(pressure)) + " hPa" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>🍃</i><span><em>空气质量</em><b>" + airText + "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>☁️</i><span><em>云量</em><b>" +
+                (isNum(cloudCover) ? Math.round(Number(cloudCover) * 100) + "%" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>☀️</i><span><em>紫外线</em><b>" +
+                (isNum(current.uvIndex) ? Number(current.uvIndex).toFixed(1) : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>🌧️</i><span><em>降水量</em><b>" +
+                (isNum(precipAmount) ? Number(precipAmount).toFixed(1) + " mm" : "暂无数据") +
+                "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>☔</i><span><em>降水概率</em><b>" +
+                Math.round(prob * 100) + "%</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>🌅</i><span><em>日出</em><b>" + formatWeatherTime(astro.sunrise) + "</b></span></div>" +
+                "<div class=\"weather-detail-card\"><i>🌇</i><span><em>日落</em><b>" + formatWeatherTime(astro.sunset) + "</b></span></div>" +
+                "</div>" +
+                "<div class=\"air-quality-title\">污染物浓度</div>" +
+                "<div class=\"pollutant-grid\">" +
+                "<span><i>PM2.5</i><b>" + formatAirValue(pm25.value, pm25.unit) + "</b></span>" +
+                "<span><i>PM10</i><b>" + formatAirValue((pollutants.pm10 || {}).value, (pollutants.pm10 || {}).unit) + "</b></span>" +
+                "<span><i>O₃</i><b>" + formatAirValue((pollutants.o3 || {}).value, (pollutants.o3 || {}).unit) + "</b></span>" +
+                "<span><i>NO₂</i><b>" + formatAirValue((pollutants.no2 || {}).value, (pollutants.no2 || {}).unit) + "</b></span>" +
+                "<span><i>SO₂</i><b>" + formatAirValue((pollutants.so2 || {}).value, (pollutants.so2 || {}).unit) + "</b></span>" +
+                "<span><i>CO</i><b>" + formatAirValue((pollutants.co || {}).value, (pollutants.co || {}).unit) + "</b></span>" +
+                "</div>" +
+                sourceNote;
+        })
+        .catch(function (error) {
+            console.error(error);
+            weatherElement.textContent = "天气暂时无法获取";
+            weatherElement.classList.add("is-muted");
+        });
+}
+
+// 带超时的 fetch：定位类接口偶尔会挂住不返回，没有超时页面会永远停在「正在定位...」
+// deadlineMs 是调用方给的剩余总时限，取它和 requestTimeoutMs 的较小值，
+// 保证整条回退链不会因为多个源逐个超时而越拖越久。
+// init 用于附加请求头（和风的 X-QW-Api-Key 必须走头，不能用查询参数）。
+function fetchWithTimeout(url, timeoutMs, deadlineMs, init) {
+    var limit = timeoutMs || weatherConfig.requestTimeoutMs;
+    if (typeof deadlineMs === "number" && deadlineMs < limit) {
+        limit = deadlineMs;
+    }
+    if (limit <= 0) {
+        return Promise.reject(new Error("定位总时限已到，跳过：" + url));
+    }
+
+    var controller = new AbortController();
+    var timer = window.setTimeout(function () {
+        controller.abort();
+    }, limit);
+
+    var options = init || {};
+    options.signal = controller.signal;
+
+    return fetch(url, options).then(function (response) {
+        window.clearTimeout(timer);
+        if (!response.ok) {
+            throw new Error("请求失败 " + response.status + "：" + url);
+        }
+        return response;
+    }, function (error) {
+        window.clearTimeout(timer);
+        throw error;
+    });
+}
+
+// 两点间大圆距离（公里），用于判断浏览器定位有没有跑偏
+function haversineKm(lat1, lon1, lat2, lon2) {
+    var toRad = function (deg) {
+        return deg * Math.PI / 180;
+    };
+    var dLat = toRad(lat2 - lat1);
+    var dLon = toRad(lon2 - lon1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// 兜底城市：所有定位手段都失败（或 fixed 模式）时使用
+function loadFallbackWeatherLocation() {
+    loadWeather(weatherConfig.fallbackLatitude,
+        weatherConfig.fallbackLongitude,
+        weatherConfig.fallbackCity);
+}
+
+function showWeatherUnavailable() {
+    var weatherElement = document.getElementById("weather-info");
+    if (weatherElement) {
+        weatherElement.textContent = "天气暂时无法获取";
+        weatherElement.classList.add("is-muted");
+    }
+}
+
+// 把 IP 库的地址串统一成「省市区」：
+//   「中国河北省保定市涞源县」→「河北省保定市涞源县」
+//   「河北省保定市 联通」      →「河北省保定市」（pconline 会把 ISP 拼在后面）
+function pickCityName(address) {
+    var name = String(address || "").replace(/^中国/, "").trim();
+    name = name.split(/\s+/)[0];
+    return name.replace(/(联通|移动|电信|铁通|广电|教育网|鹏博士)$/, "");
+}
+
+// 各 IP 定位源返回结构不同，统一归一化成 { latitude, longitude, name }
+// 返回 null 表示该源不可用，继续尝试下一个源
+function parseIpLocation(sourceIndex, data) {
+    if (!data) {
+        return null;
+    }
+
+    // 源 0：v2.xxapi.cn
+    if (sourceIndex === 0) {
+        var loc = data.data;
+        var lat = loc && Number(loc.lat);
+        var lng = loc && Number(loc.lng);
+        if (data.code !== 200 || !loc ||
+            !Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return null;
+        }
+        return { latitude: lat, longitude: lng, name: pickCityName(loc.address) };
+    }
+
+    // 源 1：whois.pconline.com.cn（GBK 返回，靠 fetch 的 charset 自动解码）
+    if (sourceIndex === 1) {
+        var lat2 = Number(data.lat);
+        var lng2 = Number(data.lng);
+        if (!Number.isFinite(lat2) || !Number.isFinite(lng2)) {
+            return null;
+        }
+        var name = pickCityName(data.addr) ||
+            [data.pro, data.city].filter(Boolean).join("");
+        return { latitude: lat2, longitude: lng2, name: name };
+    }
+
+    return null;
+}
+
+// 依次尝试各个 IP 定位源；成功一个就立刻用，全部失败才回退兜底城市。
+// 整条链共享 locationDeadlineMs 总时限，防止逐个超时把等待时间越拖越长。
+function loadLocalWeather() {
+    var apis = weatherConfig.ipApis || [];
+    var deadline = Date.now() + weatherConfig.locationDeadlineMs;
+    var index = 0;
+
+    function tryNext() {
+        var remaining = deadline - Date.now();
+        if (index >= apis.length || remaining <= 0) {
+            console.warn("IP 定位源均不可用，回退到兜底城市");
+            loadFallbackWeatherLocation();
+            return;
+        }
+
+        var current = index++;
+        fetchWithTimeout(apis[current], remaining, remaining)
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                var result = parseIpLocation(current, data);
+                if (!result) {
+                    throw new Error("IP 定位源返回内容无效：" + apis[current]);
+                }
+                loadWeather(result.latitude, result.longitude,
+                    result.name || "当前位置");
+            })
+            .catch(function (error) {
+                console.warn(error);
+                tryNext();
+            });
+    }
+
+    tryNext();
+}
+
+function loadBrowserWeather() {
+    if (!navigator.geolocation) {
+        loadLocalWeather();
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(function (position) {
+        var latitude = position.coords.latitude;
+        var longitude = position.coords.longitude;
+
+        // 电脑端的「GPS」其实是 WiFi 定位库，经常偏到隔壁市，用距离做一次兜底校验
+        var drift = haversineKm(latitude, longitude,
+            weatherConfig.fallbackLatitude, weatherConfig.fallbackLongitude);
+        if (Number.isFinite(drift) && drift > weatherConfig.maxAutoDistanceKm) {
+            console.warn("浏览器定位偏离兜底城市 " + Math.round(drift) + " km，已忽略");
+            loadLocalWeather();
+            return;
+        }
+
+        // 地名仅用于显示；取数始终用定位坐标本身，不做地名反查
+        loadWeather(latitude, longitude, weatherConfig.fallbackCity);
+    }, function () {
+        loadLocalWeather();
+    }, {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 300000
+    });
+}
+
+// 按配置选择定位方式：auto（默认，定位访客所在地）/ fixed（永远用兜底坐标）
+function initWeather() {
+    if (weatherConfig.locationMode === "fixed") {
+        loadFallbackWeatherLocation();
+        return;
+    }
+
+    loadBrowserWeather();
+}
+
+// 定时刷新，避免页面挂久了显示的还是几小时前的数据
+function refreshWeather() {
+    if (!resolvedWeatherLocation) {
+        return;
+    }
+
+    loadWeather(resolvedWeatherLocation.latitude,
+        resolvedWeatherLocation.longitude,
+        resolvedWeatherLocation.name);
+}
+
+function isWeatherStale() {
+    return Date.now() - lastWeatherFetchAt >=
+        weatherConfig.refreshIntervalMinutes * 60 * 1000;
+}
+
+updateLocalTime();
+window.setInterval(updateLocalTime, 1000);
+initWeather();
+
+window.setInterval(function () {
+    if (document.visibilityState === "visible" && isWeatherStale()) {
+        refreshWeather();
+    }
+}, 60 * 1000);
+
+document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && isWeatherStale()) {
+        refreshWeather();
+    }
+});
+
+// 网站运行时间：修改这里即可更换建站起始时间（当前对应时间线里的“本站搭建成功 2026.9”）。
+var siteStartTime = new Date("2026-09-01T00:00:00+08:00");
+
+function updateSiteRuntime() {
+    var runtimeElement = document.getElementById("site-runtime");
+
+    if (!runtimeElement) {
+        return;
+    }
+
+    var elapsed = Date.now() - siteStartTime.getTime();
+    if (elapsed < 0) {
+        elapsed = 0;
+    }
+
+    var days = Math.floor(elapsed / 86400000);
+    var hours = Math.floor(elapsed / 3600000) % 24;
+    var minutes = Math.floor(elapsed / 60000) % 60;
+    var seconds = Math.floor(elapsed / 1000) % 60;
+
+    runtimeElement.textContent = days + " 天 " + hours + " 时 " + minutes + " 分 " + seconds + " 秒";
+}
+
+updateSiteRuntime();
+window.setInterval(updateSiteRuntime, 1000);
+
+var weatherToggle = document.getElementById("weather-toggle");
+var weatherForecast = document.getElementById("weather-forecast");
+if (weatherToggle && weatherForecast) {
+    weatherForecast.classList.add("weather-forecast-collapsed");
+    weatherToggle.setAttribute("aria-expanded", "false");
+    weatherToggle.addEventListener("click", function () {
+        var expanded = weatherToggle.getAttribute("aria-expanded") === "true";
+        weatherToggle.setAttribute("aria-expanded", String(!expanded));
+        weatherForecast.classList.toggle("weather-forecast-collapsed", expanded);
+    });
+}
+
+// ===== 音乐组件（参考 muyudada.dpdns.org 左侧音乐布局，图标使用 Font Awesome 免费图标） =====
+var musicPlayer = {
+    audio: null,
+    playlist: [],
+    index: 0,
+    mode: "all",
+    lrc: [],
+    lrcIndex: -1,
+    seeking: false
+};
+
+function formatMusicTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+        return "0:00";
+    }
+    var total = Math.floor(seconds);
+    var minutes = Math.floor(total / 60);
+    return minutes + ":" + String(total % 60).padStart(2, "0");
+}
+
+function parseLrc(text) {
+    var lines = [];
+    String(text || "").split(/\r\n|\n|\r/).forEach(function (raw) {
+        var matches = raw.match(/\[\d{1,2}:\d{1,2}(?:[.:]\d{1,3})?\]/g);
+        if (!matches) {
+            return;
+        }
+        var content = raw.replace(/\[[^\]]*\]/g, "").trim();
+        if (!content) {
+            return;
+        }
+        matches.forEach(function (tag) {
+            var parts = tag.slice(1, -1).split(/[:.]/);
+            var minutes = parseInt(parts[0], 10);
+            var seconds = parseInt(parts[1], 10);
+            var fraction = parts[2] ? parseInt(parts[2], 10) / Math.pow(10, parts[2].length) : 0;
+            lines.push({ time: minutes * 60 + seconds + fraction, text: content });
+        });
+    });
+    return lines.sort(function (a, b) {
+        return a.time - b.time;
+    });
+}
+
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[ch];
+    });
+}
+
+function musicElements() {
+    return {
+        widget: document.getElementById("music-widget"),
+        title: document.getElementById("mw-title"),
+        artist: document.getElementById("mw-artist"),
+        cover: document.getElementById("mw-cover-img"),
+        playButton: document.getElementById("mw-play"),
+        playIcon: document.querySelector("#mw-play .mw-icon-play"),
+        pauseIcon: document.querySelector("#mw-play .mw-icon-pause"),
+        prevButton: document.getElementById("mw-prev"),
+        nextButton: document.getElementById("mw-next"),
+        modeButton: document.getElementById("mw-mode"),
+        muteButton: document.getElementById("mw-mute"),
+        volumeIcon: document.querySelector("#mw-mute .mw-icon-vol"),
+        muteIcon: document.querySelector("#mw-mute .mw-icon-mute"),
+        volumeTrack: document.getElementById("mw-volume"),
+        volumeBar: document.getElementById("mw-volume-bar"),
+        progress: document.getElementById("mw-progress"),
+        progressBar: document.getElementById("mw-progress-bar"),
+        progressThumb: document.querySelector("#mw-progress .mw-progress-thumb"),
+        currentTime: document.getElementById("mw-time-current"),
+        totalTime: document.getElementById("mw-time-total"),
+        lrcToggle: document.getElementById("mw-lrc-toggle"),
+        lrcDrawer: document.getElementById("mw-lrc-drawer"),
+        lrcContainer: document.getElementById("mw-lrc"),
+        listToggle: document.getElementById("mw-list-toggle"),
+        listDrawer: document.getElementById("mw-list-drawer"),
+        playlist: document.getElementById("mw-playlist"),
+        status: document.getElementById("music-player-status")
+    };
+}
+
+function setMusicStatus(elements, message, isError) {
+    if (!elements.status) {
+        return;
+    }
+    if (!message) {
+        elements.status.remove();
+        return;
+    }
+    elements.status.textContent = message;
+    elements.status.classList.toggle("is-error", Boolean(isError));
+    elements.status.hidden = false;
+}
+
+function updatePlayIcon(elements) {
+    var playing = musicPlayer.audio && !musicPlayer.audio.paused;
+    elements.playIcon.hidden = playing;
+    elements.pauseIcon.hidden = !playing;
+    elements.playButton.title = playing ? "暂停" : "播放";
+    elements.playButton.setAttribute("aria-label", playing ? "暂停" : "播放");
+    elements.widget.classList.toggle("is-playing", Boolean(playing));
+}
+
+function updateProgress(elements) {
+    var audio = musicPlayer.audio;
+    if (!audio || musicPlayer.seeking) {
+        return;
+    }
+    var duration = audio.duration;
+    var percent = duration ? (audio.currentTime / duration) * 100 : 0;
+    elements.progressBar.style.width = percent + "%";
+    elements.progressThumb.style.left = percent + "%";
+    elements.currentTime.textContent = formatMusicTime(audio.currentTime);
+    elements.totalTime.textContent = formatMusicTime(duration);
+    elements.progress.setAttribute("aria-valuenow", String(Math.round(percent)));
+}
+
+function updateVolumeUI(elements) {
+    var audio = musicPlayer.audio;
+    if (!audio) {
+        return;
+    }
+    var muted = audio.muted || audio.volume === 0;
+    elements.volumeIcon.hidden = muted;
+    elements.muteIcon.hidden = !muted;
+    elements.muteButton.title = muted ? "取消静音" : "静音";
+    elements.muteButton.setAttribute("aria-label", muted ? "取消静音" : "静音");
+    var percent = audio.muted ? 0 : audio.volume * 100;
+    elements.volumeBar.style.width = percent + "%";
+    elements.volumeTrack.setAttribute("aria-valuenow", String(Math.round(percent)));
+}
+
+function updateModeUI(elements) {
+    elements.widget.classList.remove("mode-one", "mode-shuffle");
+    if (musicPlayer.mode === "one") {
+        elements.widget.classList.add("mode-one");
+        elements.modeButton.title = "单曲循环";
+    } else if (musicPlayer.mode === "shuffle") {
+        elements.widget.classList.add("mode-shuffle");
+        elements.modeButton.title = "随机播放";
+    } else {
+        elements.modeButton.title = "列表循环";
+    }
+}
+
+function highlightPlaylist(elements) {
+    if (!elements.playlist) {
+        return;
+    }
+    var items = elements.playlist.children;
+    for (var i = 0; i < items.length; i++) {
+        items[i].classList.toggle("current", i === musicPlayer.index);
+    }
+}
+
+function renderLyrics(elements) {
+    musicPlayer.lrcIndex = -1;
+    if (!musicPlayer.lrc.length) {
+        elements.lrcContainer.innerHTML = "<div class=\"mw-lrc-empty\">暂无歌词</div>";
+        return;
+    }
+    elements.lrcContainer.innerHTML = musicPlayer.lrc.map(function (line, i) {
+        return "<p class=\"mw-lrc-line\" data-lrc-index=\"" + i + "\">" + escapeHtml(line.text) + "</p>";
+    }).join("");
+}
+
+function updateLyric(elements) {
+    var lines = musicPlayer.lrc;
+    if (!lines.length) {
+        return;
+    }
+    var time = musicPlayer.audio.currentTime;
+    var index = -1;
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].time <= time) {
+            index = i;
+        } else {
+            break;
+        }
+    }
+    if (index === musicPlayer.lrcIndex) {
+        return;
+    }
+    musicPlayer.lrcIndex = index;
+    var nodes = elements.lrcContainer.children;
+    for (var j = 0; j < nodes.length; j++) {
+        nodes[j].classList.toggle("current", j === index);
+    }
+    if (index >= 0 && nodes[index]) {
+        var node = nodes[index];
+        elements.lrcContainer.scrollTop = node.offsetTop -
+            elements.lrcContainer.offsetTop -
+            elements.lrcContainer.clientHeight / 2 +
+            node.offsetHeight / 2;
+    }
+}
+
+function loadLyrics(song, elements) {
+    musicPlayer.lrc = [];
+    renderLyrics(elements);
+    if (!song.lrc) {
+        return;
+    }
+    fetch(song.lrc)
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error("歌词请求失败：" + response.status);
+            }
+            return response.text();
+        })
+        .then(function (text) {
+            if (musicPlayer.playlist[musicPlayer.index] !== song) {
+                return;
+            }
+            musicPlayer.lrc = parseLrc(text);
+            renderLyrics(elements);
+        })
+        .catch(function () {
+            if (musicPlayer.playlist[musicPlayer.index] === song) {
+                musicPlayer.lrc = [];
+                renderLyrics(elements);
+            }
+        });
+}
+
+function loadCurrentSong(autoplay, elements) {
+    var song = musicPlayer.playlist[musicPlayer.index];
+    if (!song || !musicPlayer.audio) {
+        return;
+    }
+
+    elements.title.textContent = song.name;
+    elements.title.title = song.name;
+    elements.artist.textContent = song.artist || "未知歌手";
+    elements.artist.title = song.artist || "未知歌手";
+
+    if (song.cover) {
+        elements.cover.src = song.cover;
+        elements.cover.classList.add("is-visible");
+    } else {
+        elements.cover.classList.remove("is-visible");
+    }
+
+    elements.progressBar.style.width = "0%";
+    elements.progressThumb.style.left = "0%";
+    elements.currentTime.textContent = "0:00";
+    elements.totalTime.textContent = "0:00";
+    elements.progress.setAttribute("aria-valuenow", "0");
+
+    musicPlayer.audio.src = song.url;
+    musicPlayer.audio.load();
+    highlightPlaylist(elements);
+    loadLyrics(song, elements);
+
+    if (autoplay) {
+        var playback = musicPlayer.audio.play();
+        if (playback && playback.catch) {
+            playback.catch(function (error) {
+                console.error(error);
+            });
+        }
+    }
+}
+
+function playSongAt(index, elements) {
+    if (!musicPlayer.playlist.length) {
+        return;
+    }
+    musicPlayer.index = (index + musicPlayer.playlist.length) % musicPlayer.playlist.length;
+    loadCurrentSong(true, elements);
+}
+
+function nextSongIndex(mode) {
+    var total = musicPlayer.playlist.length;
+    if (total <= 1) {
+        return musicPlayer.index;
+    }
+    if (mode === "shuffle") {
+        var next = musicPlayer.index;
+        while (next === musicPlayer.index) {
+            next = Math.floor(Math.random() * total);
+        }
+        return next;
+    }
+    return (musicPlayer.index + 1) % total;
+}
+
+function initMusicSlider(track, onSeek) {
+    var dragging = false;
+    var percentFromEvent = function (event) {
+        var rect = track.getBoundingClientRect();
+        if (!rect.width) {
+            return 0;
+        }
+        var x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX);
+        return Math.min(1, Math.max(0, (x - rect.left) / rect.width));
+    };
+    var apply = function (event) {
+        onSeek(percentFromEvent(event));
+    };
+    var start = function (event) {
+        dragging = true;
+        track.classList.add("is-seeking");
+        apply(event);
+    };
+    var move = function (event) {
+        if (dragging) {
+            apply(event);
+        }
+    };
+    var end = function () {
+        if (!dragging) {
+            return;
+        }
+        dragging = false;
+        track.classList.remove("is-seeking");
+    };
+
+    track.addEventListener("mousedown", start);
+    window.addEventListener("mousemove", function (event) {
+        move(event);
+    });
+    window.addEventListener("mouseup", end);
+    track.addEventListener("touchstart", start, { passive: true });
+    track.addEventListener("touchmove", function (event) {
+        if (dragging) {
+            event.preventDefault();
+            apply(event);
+        }
+    }, { passive: false });
+    track.addEventListener("touchend", end);
+    track.addEventListener("touchcancel", end);
+}
+
+function initializeMusicPlayer() {
+    var elements = musicElements();
+    if (!elements.widget || elements.widget.dataset.playerReady === "true") {
+        return;
+    }
+    elements.widget.dataset.playerReady = "true";
+    elements.widget.classList.add("is-loading");
+
+    var audio = new Audio();
+    audio.preload = "metadata";
+    audio.volume = 0.7;
+    musicPlayer.audio = audio;
+
+    audio.addEventListener("play", function () {
+        updatePlayIcon(elements);
+    });
+    audio.addEventListener("pause", function () {
+        updatePlayIcon(elements);
+    });
+    audio.addEventListener("timeupdate", function () {
+        updateProgress(elements);
+        updateLyric(elements);
+    });
+    audio.addEventListener("durationchange", function () {
+        updateProgress(elements);
+    });
+    audio.addEventListener("ended", function () {
+        if (musicPlayer.mode === "one") {
+            audio.currentTime = 0;
+            audio.play();
+            return;
+        }
+        playSongAt(nextSongIndex(musicPlayer.mode), elements);
+    });
+    audio.addEventListener("error", function () {
+        if (!musicPlayer.playlist.length) {
+            return;
+        }
+        console.error("歌曲加载失败：" + musicPlayer.playlist[musicPlayer.index].name);
+    });
+
+    elements.playButton.addEventListener("click", function () {
+        if (!musicPlayer.playlist.length) {
+            return;
+        }
+        if (audio.paused) {
+            var playback = audio.play();
+            if (playback && playback.catch) {
+                playback.catch(function (error) {
+                    console.error(error);
+                });
+            }
+        } else {
+            audio.pause();
+        }
+    });
+
+    elements.prevButton.addEventListener("click", function () {
+        playSongAt(musicPlayer.index - 1, elements);
+    });
+    elements.nextButton.addEventListener("click", function () {
+        playSongAt(nextSongIndex(musicPlayer.mode), elements);
+    });
+
+    elements.modeButton.addEventListener("click", function () {
+        musicPlayer.mode = musicPlayer.mode === "all" ? "one"
+            : musicPlayer.mode === "one" ? "shuffle" : "all";
+        updateModeUI(elements);
+    });
+
+    elements.muteButton.addEventListener("click", function () {
+        audio.muted = !audio.muted;
+        updateVolumeUI(elements);
+    });
+
+    initMusicSlider(elements.volumeTrack, function (percent) {
+        audio.muted = false;
+        audio.volume = percent;
+        updateVolumeUI(elements);
+    });
+    initMusicSlider(elements.progress, function (percent) {
+        if (!audio.duration) {
+            return;
+        }
+        audio.currentTime = percent * audio.duration;
+        updateProgress(elements);
+    });
+    elements.progress.addEventListener("mousedown", function () {
+        musicPlayer.seeking = true;
+        elements.progress.classList.add("is-seeking");
+    });
+    window.addEventListener("mouseup", function () {
+        if (musicPlayer.seeking) {
+            musicPlayer.seeking = false;
+            elements.progress.classList.remove("is-seeking");
+        }
+    });
+
+    function bindDrawerToggle(button, drawer, other) {
+        button.addEventListener("click", function () {
+            var willOpen = !drawer.classList.contains("open");
+            drawer.classList.toggle("open", willOpen);
+            button.setAttribute("aria-expanded", String(willOpen));
+            if (other) {
+                other.drawer.classList.remove("open");
+                other.button.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    bindDrawerToggle(elements.lrcToggle, elements.lrcDrawer, {
+        button: elements.listToggle,
+        drawer: elements.listDrawer
+    });
+    bindDrawerToggle(elements.listToggle, elements.listDrawer, {
+        button: elements.lrcToggle,
+        drawer: elements.lrcDrawer
+    });
+
+    updateModeUI(elements);
+    updateVolumeUI(elements);
+
+    var query = new URLSearchParams({
+        server: musicPlaylistConfig.server,
+        type: musicPlaylistConfig.type,
+        id: musicPlaylistConfig.id
+    });
+
+    fetch(musicPlaylistConfig.api + "?" + query.toString())
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error("网易云歌单请求失败：" + response.status);
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error("网易云歌单没有可播放的歌曲");
+            }
+
+            musicPlayer.playlist = data.map(function (song) {
+                return {
+                    name: song.name,
+                    artist: song.artist,
+                    url: song.url,
+                    cover: song.pic,
+                    lrc: song.lrc
+                };
+            }).filter(function (song) {
+                return song.name && song.url;
+            });
+
+            if (!musicPlayer.playlist.length) {
+                throw new Error("网易云歌单没有有效的音频地址");
+            }
+
+            elements.playlist.innerHTML = musicPlayer.playlist.map(function (song, i) {
+                return "<button class=\"mw-playlist-item\" type=\"button\" data-song-index=\"" + i + "\">" +
+                    "<span class=\"mw-playlist-index\">" + (i + 1) + "</span>" +
+                    "<span class=\"mw-playlist-name\">" + escapeHtml(song.name) + "</span>" +
+                    "<span class=\"mw-playlist-artist\">" + escapeHtml(song.artist || "") + "</span>" +
+                    "</button>";
+            }).join("");
+
+            elements.playlist.addEventListener("click", function (event) {
+                var item = event.target.closest(".mw-playlist-item");
+                if (!item) {
+                    return;
+                }
+                playSongAt(parseInt(item.dataset.songIndex, 10), elements);
+            });
+
+            elements.widget.classList.remove("is-loading");
+            setMusicStatus(elements, null);
+            loadCurrentSong(false, elements);
+        })
+        .catch(function (error) {
+            console.error(error);
+            elements.widget.classList.remove("is-loading");
+            elements.widget.classList.add("is-error");
+            setMusicStatus(elements, "歌单加载失败，请检查网易云歌单 ID。", true);
+        });
+}
+
+initializeMusicPlayer();
+
+document.addEventListener('contextmenu', function (event) {
+    event.preventDefault();
+});
+
+function handlePress(event) {
+    this.classList.add('pressed');
+}
+
+function handleRelease(event) {
+    this.classList.remove('pressed');
+}
+
+function handleCancel(event) {
+    this.classList.remove('pressed');
+}
+
+var buttons = document.querySelectorAll('.projectItem');
+buttons.forEach(function (button) {
+    button.addEventListener('mousedown', handlePress);
+    button.addEventListener('mouseup', handleRelease);
+    button.addEventListener('mouseleave', handleCancel);
+    button.addEventListener('touchstart', handlePress);
+    button.addEventListener('touchend', handleRelease);
+    button.addEventListener('touchcancel', handleCancel);
+});
+
+function toggleClass(selector, className) {
+    var elements = document.querySelectorAll(selector);
+    elements.forEach(function (element) {
+        element.classList.toggle(className);
+    });
+}
+
+function pop(imageURL) {
+    var tcMainElement = document.querySelector(".tc-img");
+    if (imageURL) {
+        tcMainElement.src = imageURL;
+    }
+    toggleClass(".tc-main", "active");
+    toggleClass(".tc", "active");
+}
+
+var tc = document.getElementsByClassName('tc');
+var tc_main = document.getElementsByClassName('tc-main');
+tc[0].addEventListener('click', function (event) {
+    pop();
+});
+tc_main[0].addEventListener('click', function (event) {
+    event.stopPropagation();
+});
+
+
+
+function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + value + expires + "; path=/";
+}
+
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i];
+        while (cookie.charAt(0) == ' ') {
+            cookie = cookie.substring(1, cookie.length);
+        }
+        if (cookie.indexOf(nameEQ) == 0) {
+            return cookie.substring(nameEQ.length, cookie.length);
+        }
+    }
+    return null;
+}
+
+var hitokotoRotateTimer = null;
+
+function loadHitokoto() {
+    var textElement = document.getElementById("hitokoto-text");
+    var fromElement = document.getElementById("hitokoto-from");
+
+    if (!textElement || !fromElement) {
+        return;
+    }
+
+    textElement.classList.remove("typing");
+
+    fetch("https://v1.hitokoto.cn")
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error("一言接口请求失败：" + response.status);
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            if (!data || typeof data.hitokoto !== "string" || !data.hitokoto.trim()) {
+                throw new Error("一言接口返回内容无效");
+            }
+
+            var text = data.hitokoto.trim();
+            var source = typeof data.from_who === "string" && data.from_who.trim()
+                ? data.from_who.trim()
+                : data.from;
+            var index = 0;
+
+            textElement.textContent = "";
+            textElement.classList.add("typing");
+            fromElement.textContent = source ? "—— " + source : "";
+
+            function typeNextCharacter() {
+                if (index >= text.length) {
+                    textElement.classList.remove("typing");
+                    return;
+                }
+
+                textElement.textContent += text.charAt(index);
+                index += 1;
+                window.setTimeout(typeNextCharacter, 75);
+            }
+
+            typeNextCharacter();
+        })
+        .catch(function (error) {
+            console.error(error);
+            textElement.textContent = "暂时无法获取一言，请稍后再试。";
+            fromElement.textContent = "";
+            textElement.classList.remove("typing");
+        });
+}
+
+function startHitokotoRotation() {
+    if (hitokotoRotateTimer) {
+        window.clearInterval(hitokotoRotateTimer);
+    }
+
+    loadHitokoto();
+    hitokotoRotateTimer = window.setInterval(function () {
+        loadHitokoto();
+    }, 20000);
+}
+
+startHitokotoRotation();
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    var html = document.querySelector('html');
+    var themeState = getCookie("themeState") || "Light";
+    var tanChiShe = document.getElementById("tanChiShe");
+
+
+    var settingsToggle = document.querySelector(".theme-settings-toggle");
+    var settingsPanel = document.getElementById("theme-settings-panel");
+    var backgroundOpacity = document.getElementById("background-opacity");
+    var backgroundBlur = document.getElementById("background-blur");
+    var cardOpacity = document.getElementById("card-opacity");
+    var cardBlur = document.getElementById("card-blur");
+    var cardColor = document.getElementById("card-color");
+
+    var themeDefaults = {
+        Light: {
+            backgroundOpacity: "0.2",
+            backgroundBlur: "10",
+            cardOpacity: "0.62",
+            cardBlur: "12",
+            cardColor: "#eff6fc"
+        },
+        Dark: {
+            backgroundOpacity: "0.38",
+            backgroundBlur: "12",
+            cardOpacity: "0.78",
+            cardBlur: "18",
+            cardColor: "#181e2a"
+        }
+    };
+
+    function getThemeDefaults() {
+        return themeDefaults[themeState] || themeDefaults.Light;
+    }
+
+    function currentCardColor() {
+        var colorKey = themeState == "Dark" ? "cardColorDark" : "cardColorLight";
+        var savedColor = window.localStorage.getItem(colorKey) ||
+            window.localStorage.getItem("cardColor");
+        return savedColor || getThemeDefaults().cardColor;
+    }
+
+    function updateThemeVariables() {
+        var colorParts = cardColor.value.replace("#", "").match(/.{2}/g).map(function (part) {
+            return parseInt(part, 16);
+        });
+        html.style.setProperty("--background-opacity", backgroundOpacity.value);
+        html.style.setProperty("--back_filter", backgroundBlur.value + "px");
+        html.style.setProperty("--card-opacity", cardOpacity.value);
+        html.style.setProperty("--card_filter", cardBlur.value + "px");
+        html.style.setProperty("--card-base-rgb", colorParts.join(", "));
+        window.localStorage.setItem("backgroundOpacity", backgroundOpacity.value);
+        window.localStorage.setItem("backgroundBlur", backgroundBlur.value);
+        window.localStorage.setItem("cardOpacity", cardOpacity.value);
+        window.localStorage.setItem("cardBlur", cardBlur.value);
+    }
+
+    function changeTheme(theme) {
+        tanChiShe.src = theme == "Dark"
+            ? "https://raw.githubusercontent.com/MuyuDada/MuyuDada/output/github-snake-dark.svg"
+            : "https://raw.githubusercontent.com/MuyuDada/MuyuDada/output/github-snake.svg";
+        html.dataset.theme = theme;
+        setCookie("themeState", theme, 365);
+        themeState = theme;
+        cardColor.value = currentCardColor();
+    }
+
+    var Checkbox = document.getElementById('myonoffswitch')
+    Checkbox.addEventListener('change', function () {
+        changeTheme(themeState == "Dark" ? "Light" : "Dark");
+        updateThemeVariables();
+    });
+
+    if (themeState == "Dark") {
+        Checkbox.checked = false;
+    }
+
+    if (settingsToggle && settingsPanel) {
+        settingsToggle.addEventListener("click", function () {
+            var expanded = settingsToggle.getAttribute("aria-expanded") === "true";
+            settingsToggle.setAttribute("aria-expanded", String(!expanded));
+            settingsPanel.hidden = expanded;
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!settingsPanel.contains(event.target) && !settingsToggle.contains(event.target)) {
+                settingsToggle.setAttribute("aria-expanded", "false");
+                settingsPanel.hidden = true;
+            }
+        });
+    }
+
+    var defaults = getThemeDefaults();
+    var savedBackgroundOpacity = window.localStorage.getItem("backgroundOpacity");
+    var savedBackgroundBlur = window.localStorage.getItem("backgroundBlur");
+    var savedCardOpacity = window.localStorage.getItem("cardOpacity");
+    var savedCardBlur = window.localStorage.getItem("cardBlur");
+    backgroundOpacity.value = savedBackgroundOpacity !== null ? savedBackgroundOpacity : defaults.backgroundOpacity;
+    backgroundBlur.value = savedBackgroundBlur !== null ? savedBackgroundBlur : defaults.backgroundBlur;
+    cardOpacity.value = savedCardOpacity !== null ? savedCardOpacity : defaults.cardOpacity;
+    cardBlur.value = savedCardBlur !== null ? savedCardBlur : defaults.cardBlur;
+    cardColor.value = currentCardColor();
+
+    backgroundOpacity.addEventListener("input", updateThemeVariables);
+    backgroundBlur.addEventListener("input", updateThemeVariables);
+    cardOpacity.addEventListener("input", updateThemeVariables);
+    cardBlur.addEventListener("input", updateThemeVariables);
+    cardColor.addEventListener("input", function () {
+        window.localStorage.setItem(themeState == "Dark" ? "cardColorDark" : "cardColorLight", cardColor.value);
+        updateThemeVariables();
+    });
+
+    changeTheme(themeState);
+    updateThemeVariables();
+
+});
+
+
+
+
+// ===== 全局加载动画：DOM 就绪即退出，不再等待全部外部资源 =====
+var pageLoading = document.querySelector("#zyyo-loading");
+if (pageLoading) {
+    var loaderShownAt = Date.now();
+    var loaderHidden = false;
+
+    var hidePageLoader = function () {
+        if (loaderHidden) {
+            return;
+        }
+        loaderHidden = true;
+        // 最少展示 500ms，避免动画一闪而过
+        var wait = Math.max(0, 500 - (Date.now() - loaderShownAt));
+        window.setTimeout(function () {
+            pageLoading.classList.add("is-done");
+            var removeLoader = function (event) {
+                // 忽略子元素冒泡上来的 transitionend（如主题切换时的 background-color 过渡）
+                if (event && event.target !== pageLoading) {
+                    return;
+                }
+                pageLoading.style.display = "none";
+            };
+            pageLoading.addEventListener("transitionend", removeLoader);
+            window.setTimeout(removeLoader, 700);
+        }, wait);
+    };
+
+    if (document.readyState === "interactive" || document.readyState === "complete") {
+        hidePageLoader();
+    } else {
+        document.addEventListener("DOMContentLoaded", hidePageLoader);
+    }
+    window.addEventListener("load", hidePageLoader);
+    // 兜底：外部资源再卡也不会一直挡住页面
+    window.setTimeout(hidePageLoader, 4000);
+}
+
+
+
+
+if (window.localStorage.getItem("fpson") == undefined || window.localStorage.getItem("fpson") == "1") {
+    var rAF = function () {
+        return (
+            window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            function (callback) {
+                window.setTimeout(callback, 1000 / 60);
+            }
+        );
+    }();
+    var frame = 0;
+    var allFrameCount = 0;
+    var lastTime = Date.now();
+    var lastFameTime = Date.now();
+    var loop = function () {
+        var now = Date.now();
+        var fs = (now - lastFameTime);
+        var fps = Math.round(1000 / fs);
+
+        lastFameTime = now;
+        // 不置 0，在动画的开头及结尾记录此值的差值算出 FPS
+        allFrameCount++;
+        frame++;
+
+        if (now > 1000 + lastTime) {
+            var fps = Math.round((frame * 1000) / (now - lastTime));
+            if (fps <= 5) {
+                var kd = `<span style="color:#bd0000">卡成ppt🤢</span>`
+            } else if (fps <= 15) {
+                var kd = `<span style="color:red">电竞级帧率😖</span>`
+            } else if (fps <= 25) {
+                var kd = `<span style="color:orange">有点难受😨</span>`
+            } else if (fps < 35) {
+                var kd = `<span style="color:#9338e6">不太流畅🙄</span>`
+            } else if (fps <= 45) {
+                var kd = `<span style="color:#08b7e4">还不错哦😁</span>`
+            } else if (fps <= 55) {
+                var kd = `<span style="color:#39c5bb">十分流畅🤣</span>`
+            } else if (fps <= 60) {
+                var kd = `<span style="color:#00ff00">极致流畅✈</span>`
+            } else {
+                var kd = `<span style="color:#00ff00">直接起飞🚀</span>`
+            }
+            document.getElementById("fps").innerHTML = `FPS:${fps} ${kd}`;
+            frame = 0;
+            lastTime = now;
+        };
+
+        rAF(loop);
+    }
+
+    loop();
+} else {
+    document.getElementById("fps").style = "display:none!important"
+}
+
+    //动态标题
+var OriginTitile = document.title;
+var titleTime;
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) {
+    //离开当前页面时标签显示内容
+    document.title = '👀跑哪里去了~';
+    clearTimeout(titleTime);
+  } else {
+    //返回当前页面时标签显示内容
+    document.title = '🐖抓到你啦～';
+    //两秒后变回正常标题
+    titleTime = setTimeout(function () {
+      document.title = OriginTitile;
+    }, 2000);
+  }
+});
+
+
+    var CURSOR;
+
+    Math.lerp = (a, b, n) => (1 - n) * a + n * b;
+
+    const getStyle = (el, attr) => {
+        try {
+            return window.getComputedStyle
+                ? window.getComputedStyle(el)[attr]
+                : el.currentStyle[attr];
+        } catch (e) { }
+        return "";
+    };
+
+    class Cursor {
+        constructor() {
+            this.pos = { curr: null, prev: null };
+            this.pt = [];
+            this.create();
+            this.init();
+            this.render();
+        }
+
+        move(left, top) {
+            this.cursor.style["left"] = `${left}px`;
+            this.cursor.style["top"] = `${top}px`;
+        }
+
+        create() {
+            if (!this.cursor) {
+                this.cursor = document.createElement("div");
+                this.cursor.id = "cursor";
+                this.cursor.classList.add("hidden");
+                document.body.append(this.cursor);
+            }
+
+            var el = document.getElementsByTagName('*');
+            for (let i = 0; i < el.length; i++)
+                if (getStyle(el[i], "cursor") == "pointer")
+                    this.pt.push(el[i].outerHTML);
+
+            document.body.appendChild((this.scr = document.createElement("style")));
+            // 这里改变鼠标指针的颜色 由svg生成
+            this.scr.innerHTML = `* {cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' width='8px' height='8px'><circle cx='4' cy='4' r='4' opacity='.5'/></svg>") 4 4, auto}`;
+        }
+
+        refresh() {
+            this.scr.remove();
+            this.cursor.classList.remove("hover");
+            this.cursor.classList.remove("active");
+            this.pos = { curr: null, prev: null };
+            this.pt = [];
+
+            this.create();
+            this.init();
+            this.render();
+        }
+
+        init() {
+            document.onmouseover = e => this.pt.includes(e.target.outerHTML) && this.cursor.classList.add("hover");
+            document.onmouseout = e => this.pt.includes(e.target.outerHTML) && this.cursor.classList.remove("hover");
+            document.onmousemove = e => { (this.pos.curr == null) && this.move(e.clientX - 10, e.clientY - 10); this.pos.curr = { x: e.clientX - 10, y: e.clientY - 10 }; this.cursor.classList.remove("hidden"); };
+            document.onmouseenter = e => this.cursor.classList.remove("hidden");
+            document.onmouseleave = e => this.cursor.classList.add("hidden");
+            document.onmousedown = e => this.cursor.classList.add("active");
+            document.onmouseup = e => this.cursor.classList.remove("active");
+        }
+
+        render() {
+            if (this.pos.prev) {
+                this.pos.prev.x = Math.lerp(this.pos.prev.x, this.pos.curr.x, 0.15);
+                this.pos.prev.y = Math.lerp(this.pos.prev.y, this.pos.curr.y, 0.15);
+                this.move(this.pos.prev.x, this.pos.prev.y);
+            } else {
+                this.pos.prev = this.pos.curr;
+            }
+            requestAnimationFrame(() => this.render());
+        }
+    }
+
+    (() => {
+        CURSOR = new Cursor();
+        // 需要重新获取列表时，使用 CURSOR.refresh()
+    })();
+
+
+
+    function clickEffect() {
+  let balls = [];
+  let longPressed = false;
+  let longPress;
+  let multiplier = 0;
+  let width, height;
+  let origin;
+  let normal;
+  let ctx;
+  const colours = ["#F73859", "#14FFEC", "#00E0FF", "#FF99FE", "#FAF15D"];
+  const canvas = document.createElement("canvas");
+  document.body.appendChild(canvas);
+  canvas.setAttribute("style", "width: 100%; height: 100%; top: 0; left: 0; z-index: 99999; position: fixed; pointer-events: none;");
+  const pointer = document.createElement("span");
+  pointer.classList.add("pointer");
+  document.body.appendChild(pointer);
+ 
+  if (canvas.getContext && window.addEventListener) {
+    ctx = canvas.getContext("2d");
+    updateSize();
+    window.addEventListener('resize', updateSize, false);
+    loop();
+    window.addEventListener("mousedown", function(e) {
+      pushBalls(randBetween(10, 20), e.clientX, e.clientY);
+      document.body.classList.add("is-pressed");
+      longPress = setTimeout(function(){
+        document.body.classList.add("is-longpress");
+        longPressed = true;
+      }, 500);
+    }, false);
+    window.addEventListener("mouseup", function(e) {
+      clearInterval(longPress);
+      if (longPressed == true) {
+        document.body.classList.remove("is-longpress");
+        pushBalls(randBetween(50 + Math.ceil(multiplier), 100 + Math.ceil(multiplier)), e.clientX, e.clientY);
+        longPressed = false;
+      }
+      document.body.classList.remove("is-pressed");
+    }, false);
+    window.addEventListener("mousemove", function(e) {
+      let x = e.clientX;
+      let y = e.clientY;
+      pointer.style.top = y + "px";
+      pointer.style.left = x + "px";
+    }, false);
+  } else {
+    console.log("canvas or addEventListener is unsupported!");
+  }
+ 
+ 
+  function updateSize() {
+    canvas.width = window.innerWidth * 2;
+    canvas.height = window.innerHeight * 2;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(2, 2);
+    width = (canvas.width = window.innerWidth);
+    height = (canvas.height = window.innerHeight);
+    origin = {
+      x: width / 2,
+      y: height / 2
+    };
+    normal = {
+      x: width / 2,
+      y: height / 2
+    };
+  }
+  class Ball {
+    constructor(x = origin.x, y = origin.y) {
+      this.x = x;
+      this.y = y;
+      this.angle = Math.PI * 2 * Math.random();
+      if (longPressed == true) {
+        this.multiplier = randBetween(14 + multiplier, 15 + multiplier);
+      } else {
+        this.multiplier = randBetween(6, 12);
+      }
+      this.vx = (this.multiplier + Math.random() * 0.5) * Math.cos(this.angle);
+      this.vy = (this.multiplier + Math.random() * 0.5) * Math.sin(this.angle);
+      this.r = randBetween(8, 12) + 3 * Math.random();
+      this.color = colours[Math.floor(Math.random() * colours.length)];
+    }
+    update() {
+      this.x += this.vx - normal.x;
+      this.y += this.vy - normal.y;
+      normal.x = -2 / window.innerWidth * Math.sin(this.angle);
+      normal.y = -2 / window.innerHeight * Math.cos(this.angle);
+      this.r -= 0.3;
+      this.vx *= 0.9;
+      this.vy *= 0.9;
+    }
+  }
+ 
+  function pushBalls(count = 1, x = origin.x, y = origin.y) {
+    for (let i = 0; i < count; i++) {
+      balls.push(new Ball(x, y));
+    }
+  }
+ 
+  function randBetween(min, max) {
+    return Math.floor(Math.random() * max) + min;
+  }
+ 
+  function loop() {
+    ctx.fillStyle = "rgba(255, 255, 255, 0)";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < balls.length; i++) {
+      let b = balls[i];
+      if (b.r < 0) continue;
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2, false);
+      ctx.fill();
+      b.update();
+    }
+    if (longPressed == true) {
+      multiplier += 0.2;
+    } else if (!longPressed && multiplier >= 0) {
+      multiplier -= 0.4;
+    }
+    removeBall();
+    requestAnimationFrame(loop);
+  }
+ 
+  function removeBall() {
+    for (let i = 0; i < balls.length; i++) {
+      let b = balls[i];
+      if (b.x + b.r < 0 || b.x - b.r > width || b.y + b.r < 0 || b.y - b.r > height || b.r < 0) {
+        balls.splice(i, 1);
+      }
+    }
+  }
+}
+// ===================== 电脑状态卡片 =====================
+// 数据链路：本机 tools/report-device.ps1 --POST--> Cloudflare Worker --KV--> 这里 GET
+// 纯静态站点没有后端，所以「本机上报 + 中转读取」是唯一可行的做法。
+//
+// 没填 deviceStatusConfig.endpoint 时整张卡片隐藏，页面上不会留一块死区域。
+var deviceStatusTimer = null;
+var deviceStatusInFlight = false;
+var deviceStatusLastSuccessAt = 0;
+var deviceStatusElements = null;
+
+// 缓存 DOM 查询；卡片是静态写在 index.html 里的，查一次就够
+function deviceStatusEls() {
+    if (!deviceStatusElements) {
+        deviceStatusElements = {
+            card: document.getElementById("device-status-card"),
+            badge: document.getElementById("device-badge"),
+            badgeText: document.getElementById("device-badge-text"),
+            icon: document.getElementById("device-app-icon"),
+            glyph: document.getElementById("device-app-glyph"),
+            appName: document.getElementById("device-app-name"),
+            appQuip: document.getElementById("device-app-quip"),
+            title: document.getElementById("device-title"),
+            updated: document.getElementById("device-updated"),
+            refresh: document.getElementById("device-refresh")
+        };
+    }
+    return deviceStatusElements;
+}
+
+// 进程名优先命中映射表，其次按应用名里的关键词兜底，最后给个通用显示器图标。
+// 返回值形如 "fa-brands fa-edge" 或 "fa-solid fa-code"（含字体族）。
+function deviceIconFor(processName, appName) {
+    var map = deviceStatusConfig.iconMap || {};
+    var key = String(processName || "").toLowerCase();
+
+    if (key && Object.prototype.hasOwnProperty.call(map, key)) {
+        return map[key];
+    }
+
+    var name = String(appName || "");
+    var rules = deviceStatusConfig.keywordIcons || [];
+
+    for (var i = 0; i < rules.length; i++) {
+        if (name.indexOf(rules[i].match) !== -1) {
+            return rules[i].icon;
+        }
+    }
+
+    return "fa-solid fa-desktop";
+}
+
+// 把图标类写到内层 <i> 上：Font Awesome 7 的字形由 .fa-xxx 元素自己的
+// ::before{content:var(--fa)} 渲染，写在父容器上是画不出来的。
+// 外层 div.device-app-icon 只负责尺寸、底色和状态色，两者互不干扰。
+function setDeviceIcon(iconName) {
+    var els = deviceStatusEls();
+
+    if (!els.glyph) {
+        return;
+    }
+
+    // 兼容只写图标名的旧配置：补上默认字体族
+    var value = String(iconName || "");
+    var classes = value.indexOf("fa-brands") === 0 || value.indexOf("fa-solid") === 0 ||
+        value.indexOf("fa-regular") === 0
+        ? value.split(/\s+/)
+        : ["fa-solid", value];
+
+    els.glyph.className = classes.filter(Boolean).join(" ");
+}
+
+function setDeviceBadge(text, tone) {
+    var els = deviceStatusEls();
+
+    if (!els.badge) {
+        return;
+    }
+
+    els.badge.className = "device-badge is-" + tone;
+
+    if (els.badgeText) {
+        els.badgeText.textContent = text;
+    }
+}
+
+// 上报时间转成「刚刚 / N 分钟前」，超过一小时就只显示时刻
+function formatDeviceAge(reportedAt) {
+    if (!reportedAt) {
+        return "--";
+    }
+
+    var ageSeconds = Math.max(0, Math.round((Date.now() - reportedAt) / 1000));
+
+    if (ageSeconds < 60) {
+        return "刚刚更新";
+    }
+    if (ageSeconds < 3600) {
+        return Math.round(ageSeconds / 60) + " 分钟前更新";
+    }
+
+    var date = new Date(reportedAt);
+    var pad = function (value) {
+        return String(value).padStart(2, "0");
+    };
+
+    return pad(date.getHours()) + ":" + pad(date.getMinutes()) + " 更新";
+}
+
+// 各状态下的兜底文案：脚本已经带了 quip，但旧记录或异常数据可能没有
+function defaultDeviceQuip(state, idleSeconds) {
+    if (state === "locked") {
+        return "电脑锁屏了，人不在跟前。";
+    }
+    if (state === "away") {
+        var minutes = Math.floor((idleSeconds || 0) / 60);
+        return minutes > 0 ? "已经 " + minutes + " 分钟没有操作了。" : "暂时离开了一下。";
+    }
+    if (state === "online") {
+        return "正在使用中。";
+    }
+    return "状态未知。";
+}
+
+function renderDeviceOffline(reason) {
+    var els = deviceStatusEls();
+
+    if (!els.card) {
+        return;
+    }
+
+    els.card.dataset.state = "offline";
+    setDeviceBadge("离线", "off");
+    setDeviceIcon("fa-solid fa-power-off");
+
+    if (els.appName) {
+        els.appName.textContent = "电脑已离线";
+    }
+    if (els.appQuip) {
+        els.appQuip.textContent = reason || "本机上报已中断，可能关机或断网。";
+    }
+    if (els.title) {
+        els.title.hidden = true;
+        els.title.textContent = "";
+    }
+    if (els.updated) {
+        els.updated.textContent = deviceStatusLastSuccessAt
+            ? formatDeviceAge(deviceStatusLastSuccessAt)
+            : "暂无数据";
+    }
+}
+
+// 备用通道拿到的是一份「裸快照」（没有 Worker 包装的 online / stale 字段），
+// 所以这里按和 Worker 一样的规则在本地补算一遍，让两种来源的载荷形状一致。
+//
+// 这一步不能省：GitHub raw 的 CDN 最长缓存 5 分钟，完全可能把一份早就过期的
+// 快照发过来。只有按 reportedAt 在本地判一次时效，才不会把「早就关机」显示成「在线」。
+function normalizeDeviceSnapshot(record) {
+    var heartbeat = Number(record && record.heartbeatSeconds) || 0;
+
+    // 与 worker/device-status-worker.js 的 staleThresholdFor 保持同一套规则：
+    // 阈值 = max(心跳 × 2, 心跳 + 60s)，夹到 [120s, 2 天 + 60s]
+    var threshold = heartbeat > 0
+        ? Math.max(heartbeat * 2, heartbeat + 60)
+        : Number(deviceStatusConfig.staleAfterSeconds) || 600;
+
+    threshold = Math.max(120, Math.min(86400 * 2 + 60, threshold));
+
+    var ageSeconds = Math.round((Date.now() - (Number(record.reportedAt) || 0)) / 1000);
+    var stale = ageSeconds > threshold;
+
+    return {
+        success: true,
+        online: !stale,
+        stale: stale,
+        ageSeconds: ageSeconds,
+        staleAfterSeconds: threshold,
+        record: record
+    };
+}
+
+function renderDeviceStatus(payload, sourceLabel) {
+    var els = deviceStatusEls();
+
+    if (!els.card) {
+        return;
+    }
+
+    // stale = 上报断流；record 为空 = 从未上报过
+    if (!payload || payload.success === false || !payload.online || !payload.record) {
+        renderDeviceOffline(payload && payload.reason === "no_report_yet"
+            ? "本机还没有上报过状态。"
+            : "");
+        return;
+    }
+
+    var record = payload.record;
+    var state = String(record.state || "unknown");
+    var appName = String(record.app || record.process || "").trim() || "未知应用";
+
+    els.card.dataset.state = state;
+
+    if (state === "online") {
+        setDeviceBadge("在线", "ok");
+    } else if (state === "away") {
+        setDeviceBadge("离开", "warn");
+    } else if (state === "locked") {
+        setDeviceBadge("锁屏", "idle");
+    } else {
+        setDeviceBadge("未知", "unknown");
+    }
+
+    setDeviceIcon(deviceIconFor(record.process, appName));
+
+    if (els.appName) {
+        els.appName.textContent = appName;
+    }
+    if (els.appQuip) {
+        els.appQuip.textContent = String(record.quip || "").trim() ||
+            defaultDeviceQuip(state, record.idleSeconds);
+    }
+
+    // 窗口标题是锦上添花，没有就整行收起
+    if (els.title) {
+        var title = String(record.title || "").trim();
+
+        els.title.textContent = title;
+        els.title.hidden = !title;
+    }
+
+    if (els.updated) {
+        // 走备用通道时标出来，免得看到一份几分钟前的数据还以为是实时的
+        els.updated.textContent = formatDeviceAge(record.reportedAt) +
+            (sourceLabel ? " · " + sourceLabel : "");
+    }
+}
+
+// 备用通道：读 GitHub Gist 上的裸快照，本地补算时效后交给同一个渲染函数。
+// 返回 Promise，reject 表示这条通道也不可用。
+function fetchDeviceFallback() {
+    var fallback = String(deviceStatusConfig.fallbackEndpoint || "").trim();
+
+    if (!fallback) {
+        return Promise.reject(new Error("未配置备用通道"));
+    }
+
+    // Gist raw 响应带 Cache-Control: max-age=300，浏览器自己就会把副本缓存 5 分钟。
+    // 挂一个每次都不同的查询串能绕开浏览器这一层缓存（浏览器按完整 URL 做键）。
+    //
+    // 注意别指望它能绕开 GitHub 那边的缓存：实测连写 5 轮、每轮都用随机查询串读，
+    // 看到新内容的延迟分别是 1 / 58 / 103 / 54 / 46 秒 —— 查询串对 Fastly 与
+    // GitHub 自身的传播延迟没有作用。所以真正的兜底是返回后按 reportedAt 在本地
+    // 判一次时效（见 normalizeDeviceSnapshot），而不是这个参数。
+    var url = fallback + (fallback.indexOf("?") === -1 ? "?" : "&") + "t=" + Date.now();
+
+    return fetchWithTimeout(url, deviceStatusConfig.requestTimeoutMs).then(function (response) {
+        return response.json();
+    }).then(function (record) {
+        if (!record || !record.reportedAt) {
+            throw new Error("备用通道快照为空");
+        }
+        return normalizeDeviceSnapshot(record);
+    });
+}
+
+function fetchDeviceStatus(manual) {
+    var els = deviceStatusEls();
+    var endpoint = String(deviceStatusConfig.endpoint || "").trim();
+    var hasFallback = !!String(deviceStatusConfig.fallbackEndpoint || "").trim();
+
+    if (!els.card) {
+        return;
+    }
+
+    // 主通道和备用通道都没配，就当功能未启用，直接藏掉卡片
+    if (!endpoint && !hasFallback) {
+        els.card.hidden = true;
+        return;
+    }
+
+    els.card.hidden = false;
+
+    if (deviceStatusInFlight) {
+        return;
+    }
+
+    deviceStatusInFlight = true;
+
+    if (manual && els.refresh) {
+        els.refresh.classList.add("is-spinning");
+    }
+
+    // 带上时间戳绕开任何中间缓存；Worker 侧本身也是 no-store
+    var url = endpoint + (endpoint.indexOf("?") === -1 ? "?" : "&") + "t=" + Date.now();
+
+    // 主通道优先。它拿不到数据、或者拿到的已经过期，就退到备用通道。
+    // 两条都失败才算真失败。
+    var primary = endpoint
+        ? fetchWithTimeout(url, deviceStatusConfig.requestTimeoutMs)
+            .then(function (response) { return response.json(); })
+        : Promise.reject(new Error("未配置主通道"));
+
+    primary.then(function (payload) {
+        // 主通道说「离线」时，不急着下结论：可能是 Cloudflare 那一段出问题，
+        // 而本机其实好好的。这时用备用通道交叉验证一次。
+        if (payload && payload.success !== false && payload.online && payload.record) {
+            deviceStatusLastSuccessAt = Date.now();
+            renderDeviceStatus(payload, "");
+            return null;
+        }
+
+        return fetchDeviceFallback().then(function (snapshot) {
+            deviceStatusLastSuccessAt = Date.now();
+            renderDeviceStatus(snapshot, "备用通道");
+            return null;
+        }).catch(function () {
+            // 备用通道也没有更新鲜的说法，就用主通道的结论
+            deviceStatusLastSuccessAt = Date.now();
+            renderDeviceStatus(payload, "");
+            return null;
+        });
+    }).catch(function (error) {
+        console.warn("电脑状态主通道获取失败：" + error.message);
+
+        return fetchDeviceFallback().then(function (snapshot) {
+            deviceStatusLastSuccessAt = Date.now();
+            renderDeviceStatus(snapshot, "备用通道");
+            return null;
+        }).catch(function (fallbackError) {
+            console.warn("电脑状态备用通道获取失败：" + fallbackError.message);
+
+            // 两条都拿不到时不清空旧内容，只把状态改成离线，避免卡片闪空
+            renderDeviceOffline("暂时读不到状态，稍后自动重试。");
+            return null;
+        });
+    }).then(function () {
+        deviceStatusInFlight = false;
+
+        if (els.refresh) {
+            els.refresh.classList.remove("is-spinning");
+        }
+    });
+}
+
+function initDeviceStatus() {
+    var els = deviceStatusEls();
+
+    if (!els.card) {
+        return;
+    }
+
+    if (!String(deviceStatusConfig.endpoint || "").trim() &&
+        !String(deviceStatusConfig.fallbackEndpoint || "").trim()) {
+        els.card.hidden = true;
+        return;
+    }
+
+    if (els.refresh) {
+        els.refresh.addEventListener("click", function () {
+            fetchDeviceStatus(true);
+        });
+    }
+
+    fetchDeviceStatus(false);
+
+    // 轮询间隔比本机上报间隔略长，避免刚好卡在上报边界上读到旧数据
+    deviceStatusTimer = window.setInterval(function () {
+        if (document.visibilityState === "visible") {
+            fetchDeviceStatus(false);
+        }
+    }, Math.max(10, deviceStatusConfig.refreshIntervalSeconds) * 1000);
+
+    // 切回前台时补一次：后台标签页的定时器会被浏览器降频，回来先对一下时间
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState !== "visible") {
+            return;
+        }
+
+        var sinceSuccess = (Date.now() - deviceStatusLastSuccessAt) / 1000;
+
+        if (sinceSuccess >= deviceStatusConfig.visibilityRefreshAfterSeconds) {
+            fetchDeviceStatus(false);
+        }
+    });
+}
+
+initDeviceStatus();
+
+clickEffect();
