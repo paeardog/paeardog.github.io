@@ -339,7 +339,7 @@ content {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: url(../img/favicon.gif) center/cover no-repeat;
+    background: url(../img/eardog.png) center/cover no-repeat;
     box-shadow: var(--control-shadow), 0 0 0 1px var(--card-border) inset;
     animation: loadingBob 2.4s ease-in-out infinite;
 }
