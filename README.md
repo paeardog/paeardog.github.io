@@ -2,13 +2,13 @@
 
 <img src="static/img/favicon.gif" width="120" alt="logo" />
 
-# Muyu の 主页
+# 基于 Muyu の 主页 修改的 个人主页
 
-永远相信美好的事情即将发生 ————
+淡淡的就会顺顺的.
 
 个人主页源码,纯静态页面,无需构建,包含**两套风格迥异的主页**。
 
-在线访问:[https://muyudada.github.io](https://muyudada.github.io)
+在线访问:[https://paeardog.github.io](https://paeardog.github.io)
 
 </div>
 
@@ -30,7 +30,6 @@
 - **一言 Hitokoto**:打字机效果逐字显示,每 20 秒自动刷新
 - **当地时间**:实时时钟 + 中文日期(含星期)与时段问候,每秒更新
 - **天气预报**:基于[和风天气 QWeather](https://www.qweather.com),**自动定位访问者所在地**(浏览器 GPS → IP 定位 → 兜底城市,逐级回退);可展开今日详情(风力、能见度、体感温度、湿度、气压、空气质量、云量、紫外线、降水量、日出日落、污染物浓度)
-- **电脑状态卡**:展示本机当前前台应用(中文名 + 吐槽文案 + 图标)、在线 / 离开 / 锁屏 / 离线状态与窗口标题。纯静态站点读不到本机信息,因此由本机 PowerShell 脚本以「变化驱动 + 心跳」的方式上报到 Cloudflare Worker(前台应用一换就立刻上报,不变时在线 5 分钟一次心跳),页面只读 D1。另有一条 GitHub Gist 备用通道,主通道读不到新鲜数据时自动兜底(见 [worker/README.md](worker/README.md))
 - **音乐播放器**:自研播放器(原生 Audio API)+ Meting 接口加载网易云歌单,支持歌词、播放列表、音量、播放模式
 - **主题设置**:明暗主题切换(Cookie 持久化),背景/卡片的透明度、模糊度与卡片颜色可调(localStorage 持久化)
 - **GitHub 贡献贪吃蛇**:明暗两套 SVG 随主题切换
@@ -333,6 +332,7 @@ var deviceStatusConfig = {
 ## 🙏 鸣谢
 
 - [zyyo.cc](https://zyyo.cc) — 主页 1 页面模板
+- [Muyu の 主页]([https://zyyo.cc](https://muyuhome.cc.cd/) — 二改
 - [Meting](https://github.com/metowolf/Meting) — 音乐接口解析
 - [Hitokoto 一言](https://hitokoto.cn) — 一言数据
 - [和风天气 QWeather](https://www.qweather.com) — 天气与空气质量数据
