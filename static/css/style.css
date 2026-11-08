@@ -482,8 +482,7 @@ content {
 .theme-settings-panel,
 .iconItem,
 .switch,
-.theme-settings-toggle,
-#fps {
+.theme-settings-toggle {
     background-color: var(--item_bg_color);
     background-image: var(--glass-sheen);
     border: 1px solid var(--card-border);
@@ -2243,19 +2242,6 @@ footer {
     border-radius: var(--r-pill);
     background: transparent;
     cursor: pointer;
-}
-
-/* --------------------------- 帧率检测 --------------------------- */
-#fps {
-    position: fixed;
-    left: 30px;
-    top: 20px;
-    z-index: 1919810;
-    padding: 5px 9px;
-    border-radius: var(--r-xs);
-    font-family: var(--font-cn);
-    font-size: 12px;
-    line-height: 1.2;
 }
 
 /* --------------------------- 响应式 --------------------------- */
