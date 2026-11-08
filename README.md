@@ -31,7 +31,7 @@
 - **主题设置**:明暗主题切换(Cookie 持久化),背景/卡片的透明度、模糊度与卡片颜色可调(localStorage 持久化),页面组件配色随主题联动
 - **GitHub 贡献贪吃蛇**:明暗两套 SVG 随主题切换
 - **站点运行时长**:建站起每秒累计的天/时/分/秒
-- **细节**:加载动画、图片弹窗(QQ / 赞赏码)、右键菜单、自定义光标、固定静态背景、常驻页面底部的页脚、进入问候弹窗、移动端响应式适配
+- **细节**:加载动画、联系方式一键复制、自定义光标、固定静态背景、常驻页面底部的页脚、进入问候弹窗、移动端响应式适配
 
 ## 📁 目录结构
 
@@ -45,8 +45,7 @@
 │   │   ├── simple.css        # Dashboard 布局(卡片、网格、响应式)
 │   │   ├── dashboard.css     # 时间天气卡样式
 │   │   ├── terminal.css      # 终端样式
-│   │   ├── fira_code.css     # FiraCode 字体声明(引用 ../fonts/)
-│   │   └── Right.css         # 右键菜单样式
+│   │   └── fira_code.css     # FiraCode 字体声明(引用 ../fonts/)
 │   ├── js/
 │   │   ├── simple.js         # 布局逻辑(主题、页脚、光标、运行时长等)
 │   │   ├── script.js         # 旧版主页逻辑(当前 index.html 不再引用,保留供参考)
@@ -55,11 +54,10 @@
 │   │   ├── layout.js         # 一言卡片(打字机)
 │   │   ├── dashboard.js      # 当地时间 + 天气预报
 │   │   ├── terminal.js       # 终端模式
-│   │   ├── music.js          # 音乐播放器
-│   │   └── Right.js          # 右键菜单
+│   │   └── music.js          # 音乐播放器
 │   ├── img/                  # 图片资源
 │   ├── svg/                  # 贪吃蛇 SVG、技能图等素材
-│   └── fonts/                # 自托管字体(霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
+│   └── fonts/                # 自托管字体(荆南波波黑 / 霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
 │       ├── FiraCode-Bold.woff2
 │       ├── FiraCode-Light.woff2
 │       ├── FiraCode-Medium.woff2
@@ -86,11 +84,11 @@
 
 | 字体变量 | 字族 | 用途 |
 | --- | --- | --- |
-| `--font-cn` | `"a"` → 霞鹜文楷 LXGW ZhenKai | 中文正文 |
-| `--font-en` | `"b"` → Ubuntu | 英文与界面正文(`body` 默认) |
-| `--font-title` | `"title"` → Pacifico | 标题手写体(主页的 "eardog") |
+| `--font-cn` | `"JingNan"` → 荆南波波黑 Bold | 中文正文 |
+| `--font-en` | `"JingNan"` → 荆南波波黑 Bold | 英文与界面正文(`body` 默认) |
+| `--font-title` | `"JingNan"` → 荆南波波黑 Bold | 标题(主页的 "eardog") |
 
-字体全部**自托管**,不依赖 Google Fonts 等外部 CDN。FiraCode 由 `static/css/fira_code.css` 声明,通过 `../fonts/` 引用 `static/fonts/` 下的 6 个 woff2 字体文件。
+主页正文统一使用**荆南波波黑 Bold**,文件为 `static/fonts/JingNanBoBoHei-Bold.woff2`;终端与代码区域仍使用 FiraCode。字体全部**自托管**,不依赖 Google Fonts 等外部 CDN;若主字体加载失败,会回退到霞鹜文楷 / Ubuntu。FiraCode 由 `static/css/fira_code.css` 声明,通过 `../fonts/` 引用 `static/fonts/` 下的 6 个 woff2 字体文件。
 
 ## 🚀 本地预览
 
@@ -126,7 +124,7 @@ docker compose up -d
 
 ### 主页
 
-布局改动集中在 [`index.html`](index.html)、[`static/css/simple.css`](static/css/simple.css) 与 [`static/js/simple.js`](static/js/simple.js);天气、音乐、终端、右键菜单脚本均位于 `static/js/`:
+布局改动集中在 [`index.html`](index.html)、[`static/css/simple.css`](static/css/simple.css) 与 [`static/js/simple.js`](static/js/simple.js);天气、音乐、终端脚本均位于 `static/js/`:
 
 | 配置项 | 位置 | 说明 |
 | --- | --- | --- |
@@ -137,7 +135,7 @@ docker compose up -d
 | 社交链接 / 时间线 / 标签 / 项目卡片 | `index.html` | 按需替换为自己的内容 |
 | 页面标题 / 描述 / 关键词 / ICP 备案号 | `index.html` | `<head>` 与 `<footer>` 中修改 |
 | 主题配色 | `static/css/root.css` | `--main_bg_color`、`--item_bg_color` 等变量 |
-| 终端命令 / 右键菜单项 | `static/js/terminal.js`、`static/js/Right.js` | 按需修改命令与菜单项 |
+| 终端命令 | `static/js/terminal.js` | 按需修改命令与提示 |
 
 ### 天气定位说明
 
@@ -287,6 +285,7 @@ var deviceStatusConfig = {
 - [和风天气 QWeather](https://www.qweather.com) — 天气与空气质量数据
 - [NodeCursor](https://github.com/hmongouachon/NodeCursor) — 主页光标跟随效果
 - [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) — 中文字体
+- [荆南波波黑](https://www.maoken.com/freefonts/14257.html) — 荆南字坊出品的免费商用字体
 
 ---
 

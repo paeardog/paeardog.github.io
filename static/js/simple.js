@@ -217,10 +217,7 @@
 		var terminal = document.getElementById("terminal");
 
 		if (avatar && persontag && terminal) {
-			heroCard.addEventListener("dblclick", function (event) {
-				if (event.target.closest && event.target.closest("#terminal")) {
-					return;
-				}
+			heroCard.addEventListener("dblclick", function () {
 				if (terminalState === "a") {
 					avatar.className = "dap";
 					persontag.className = "dap";
@@ -252,9 +249,8 @@
 	if (popup && popupText) {
 		var popupTexts = [
 			"欢迎来到 eardog 的小窝",
-			"双击资料卡可以进入终端模式",
+			"双击资料卡可进入或退出终端模式",
 			"右上角可以切换明暗主题",
-			"右键有更多菜单",
 			"淡淡的就会顺顺的"
 		];
 		var popupIndex = 0;
