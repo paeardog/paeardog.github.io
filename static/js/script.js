@@ -53,14 +53,14 @@ var weatherConfig = {
     ],
 
     // ===================== 和风天气（QWeather）=====================
-    // 认证必须走请求头 X-QW-Api-Key；旧的 ?key= 查询参数已废弃。
-    // API Host 是每个账号专属的，不是公共的 api.qweather.com
-    // （官方公告：公共地址自 2026 年起逐步停服），换账号时这两项都要改。
-    //
-    // ⚠️ 这是纯静态站点，Key 随仓库公开、任何人可见并可消耗你的额度。
-    //    如需保密，必须改成自建后端代理，把 Key 留在服务端。
-    qweatherApiKey: "88ae3e30712d4c7ea92e8b8b209949fb",
-    qweatherApiHost: "https://n27p3u5uhf.re.qweatherapi.com"
+    // 这份旧版脚本 index.html 已不再引用，保留仅供对照参考。
+    // 原先这里写的是模板作者自己的 Key 与专属 Host，别人的账号侧一旦设了安全限制
+    // 就会把所有请求判 403，留着只会误导后来人，所以清空。
+    // 现行主页改用免 Key 的 Open-Meteo，见 static/js/dashboard.js。
+    // 真要用和风，认证必须走请求头 X-QW-Api-Key（?key= 查询参数已废弃），
+    // 且 API Host 是账号专属的，不是公共的 api.qweather.com。
+    qweatherApiKey: "",
+    qweatherApiHost: ""
 };
 
 function timePeriodText(hour) {

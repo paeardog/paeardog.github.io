@@ -26,7 +26,7 @@
 - **终端模式**:**双击资料卡**进入,支持 `help` / `cd` / `visit` 等命令
 - **一言 Hitokoto**:打字机效果逐字显示,定时自动刷新
 - **当地时间**:实时时钟 + 中文日期(含星期)与时段问候,每秒更新
-- **天气预报**:通过定位链获取和风天气数据(浏览器 GPS → IP 定位 → 兜底城市),可展开今日详情
+- **天气预报**:通过定位链获取天气数据(浏览器 GPS → IP 定位 → 兜底城市),可展开今日详情
 - **音乐播放器**:通过 Meting 接口加载网易云歌单,支持歌词、播放列表、音量、播放模式
 - **主题设置**:明暗主题切换(Cookie 持久化),背景/卡片的透明度、模糊度与卡片颜色可调(localStorage 持久化),页面组件配色随主题联动
 - **GitHub 贡献贪吃蛇**:明暗两套 SVG 随主题切换
@@ -123,7 +123,7 @@ docker compose up -d
 | 配置项 | 位置 | 说明 |
 | --- | --- | --- |
 | `window.MUSIC_PLAYLIST_CONFIG` | `index.html` 内联脚本 | 网易云歌单 ID(取歌单链接中的 id) |
-| `dwWeatherConfig` | `static/js/dashboard.js` | 天气定位方式、兜底城市、刷新间隔与和风天气 Key |
+| `dwWeatherConfig` | `static/js/dashboard.js` | 天气定位方式、兜底城市、刷新间隔与数据源地址 |
 | `siteStartTime` | `static/js/simple.js` | 建站起始时间(运行时长统计) |
 | 背景图片 | `static/css/simple.css` 中 `#background` | 默认 `url(../img/background.jpg)`,换成自己的图即可 |
 | 社交链接 / 时间线 / 标签 / 项目卡片 | `index.html` | 按需替换为自己的内容 |
@@ -142,9 +142,9 @@ docker compose up -d
 ```js
 var weatherConfig = {
     locationMode: "auto",        // "auto" 定位访客所在地(默认) | "fixed" 永远用兜底城市
-    fallbackCity: "涞源",         // 定位全部失败时的兜底城市
-    fallbackLatitude: 39.3602,
-    fallbackLongitude: 114.6940,
+    fallbackCity: "长沙",         // 定位全部失败时的兜底城市
+    fallbackLatitude: 28.2278,
+    fallbackLongitude: 112.9388,
     maxAutoDistanceKm: 80,       // 定位点离兜底城市超过该公里数即判定跑偏，继续往下一级回退
     requestTimeoutMs: 8000,      // 单个请求超时
     locationDeadlineMs: 6000,    // 整条定位链的总时限(多级回退是串行的，必须封顶)
@@ -154,22 +154,21 @@ var weatherConfig = {
         "https://whois.pconline.com.cn/ipJson.jsp?json=true"
     ],
 
-    // ===================== 和风天气(QWeather)=====================
-    // 认证必须走请求头 X-QW-Api-Key；旧的 ?key= 查询参数已废弃。
-    // API Host 是每个账号专属的，不是公共的 api.qweather.com
-    // (官方公告：公共地址自 2026 年起逐步停服)，换账号时这两项都要改。
-    qweatherApiKey: "你的和风天气 API Key",
-    qweatherApiHost: "https://xxxxxxxxxx.re.qweatherapi.com"
+    // ===================== 数据来源:Open-Meteo =====================
+    // 免注册、免 Key,只需经纬度,不存在「凭据是谁的」这类问题。
+    // 数据按 CC BY 4.0 授权,页面上的来源署名请勿删除。
+    openMeteoHost: "https://api.open-meteo.com",
+    airQualityHost: "https://air-quality-api.open-meteo.com"
 };
 ```
 
 想固定显示某个城市,把 `locationMode` 改成 `"fixed"` 即可(不依赖任何第三方定位接口)。
 
-> ⚠️ 这是纯静态站点,Key 随仓库公开、任何人可见并可消耗你的额度。如需保密,必须改成自建后端代理,把 Key 留在服务端。
+> 早前用的是和风天气(QWeather),需要 API Key 与账号专属 API Host。 fork 下来时那两项还是原作者的凭据,他账号侧的安全限制会把请求直接判 `403 Security Restriction`,天气卡片整块挂掉 —— 这正是换掉数据源的原因。想改回和风的话,除了填自己的 Key 和 Host,还要在控制台的安全限制里放行 `me.paeardog.top`。
 
 **设计要点**(改动前请先读,都是踩过的坑):
 
-1. **取数只用坐标,不用地名反查。** 地名仅用于显示。中文地名库不可靠 —— 实测「保定」会命中云南的一个村,「涞源县」则完全查不到。和风 v1 直接吃经纬度,同样不需要反查。
+1. **取数只用坐标,不用地名反查。** 地名仅用于显示。中文地名库不可靠 —— 实测「保定」会命中云南的一个村,「涞源县」则完全查不到。Open-Meteo 同样直接吃经纬度,不需要反查。
 2. **IP 定位必须多源轮询。** 国内宽带 IP 归属地会跨市漂移,实测同一个 IP 被不同 IP 库分别解析成涞源 / 保定 / 石家庄 / 承德(跨度 300 km)。任一源异常/超时都自动切下一个源。
 3. **电脑端浏览器 GPS 其实是 WiFi 定位库**,经常偏到隔壁市,所以用 `maxAutoDistanceKm` 做距离校验,跑偏就忽略并改走 IP 定位。
 4. **所有定位请求都必须带超时**,且整条链要有总时限 —— 否则接口挂住不返回时,页面会一直停在「正在定位...」。
@@ -182,7 +181,7 @@ var weatherConfig = {
 - **音乐**:原生 `Audio` API + [Meting](https://github.com/metowolf/Meting) 接口解析网易云歌单
 - **图标**:Font Awesome 7(CDN,主页异步加载不阻塞首屏)
 - **字体**:全部自托管(霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
-- **天气**:和风天气 QWeather v1 API
+- **天气**:Open-Meteo(免费、无需 API Key)
 - **部署**:GitHub Pages 或 Caddy + Docker
 
 ## 🙏 鸣谢
@@ -191,7 +190,7 @@ var weatherConfig = {
 - [Muyu の 主页](https://muyuhome.cc.cd/) — 二改
 - [Meting](https://github.com/metowolf/Meting) — 音乐接口解析
 - [Hitokoto 一言](https://hitokoto.cn) — 一言数据
-- [和风天气 QWeather](https://www.qweather.com) — 天气与空气质量数据
+- [Open-Meteo](https://open-meteo.com/) — 天气与空气质量数据(CC BY 4.0)
 - [NodeCursor](https://github.com/hmongouachon/NodeCursor) — 主页光标跟随效果
 - [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) — 中文字体
 - [荆南波波黑](https://www.maoken.com/freefonts/14257.html) — 荆南字坊出品的免费商用字体

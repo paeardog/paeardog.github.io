@@ -1,7 +1,7 @@
 (function () {
 	"use strict";
 
-	// ===================== 和风天气（QWeather）配置 =====================
+	// ===================== 天气（Open-Meteo）配置 =====================
 	//
 	// 【定位策略】dwWeatherConfig.locationMode
 	//   "auto"  —— 默认。定位访客所在地：浏览器 GPS（带跑偏校验）→ IP 定位 → 兜底城市。
@@ -13,13 +13,13 @@
 	//      涞源 / 保定 / 石家庄 / 承德，跨度 300 km → 地名只用于「显示」，
 	//      取数一律用 IP 库返回的经纬度，不用地名反查坐标；
 	//   3) 中文地名库不可靠（「保定」会命中云南的一个村，「涞源县」查不到），
-	//      绝不要用城市名反查坐标；和风 v1 直接吃经纬度，同样不需要反查；
+	//      绝不要用城市名反查坐标；Open-Meteo 同样直接吃经纬度，不需要反查；
 	//   4) 定位类接口偶尔会挂住不返回 → 必须有超时，否则页面永远停在「正在定位...」。
 	var dwWeatherConfig = {
 		locationMode: "auto",
-		fallbackCity: "涞源",
-		fallbackLatitude: 39.3602,
-		fallbackLongitude: 114.6940,
+		fallbackCity: "长沙",
+		fallbackLatitude: 28.2278,
+		fallbackLongitude: 112.9388,
 		// 定位点离兜底城市超过该公里数即判定为跑偏，继续往下一级回退
 		maxAutoDistanceKm: 80,
 		// 单个定位/天气请求的超时（毫秒），避免页面一直卡在「正在定位...」
@@ -36,15 +36,12 @@
 			"https://whois.pconline.com.cn/ipJson.jsp?json=true"
 		],
 
-		// ===================== 和风天气（QWeather）=====================
-		// 认证必须走请求头 X-QW-Api-Key；旧的 ?key= 查询参数已废弃。
-		// API Host 是每个账号专属的，不是公共的 api.qweather.com
-		// （官方公告：公共地址自 2026 年起逐步停服），换账号时这两项都要改。
-		//
-		// ⚠️ 这是纯静态站点，Key 随仓库公开、任何人可见并可消耗你的额度。
-		//    如需保密，必须改成自建后端代理，把 Key 留在服务端。
-		qweatherApiKey: "88ae3e30712d4c7ea92e8b8b209949fb",
-		qweatherApiHost: "https://n27p3u5uhf.re.qweatherapi.com"
+		// ===================== 数据来源：Open-Meteo =====================
+		// 免注册、免 Key，只需经纬度。之前用和风时页面挂了 —— 那个凭据属于
+		// 模板作者，他账号侧的安全限制会把我们的请求直接判 403，改代码绕不过去。
+		// 数据采用 CC BY 4.0，页面底部保留来源署名，请勿删。
+		openMeteoHost: "https://api.open-meteo.com",
+		airQualityHost: "https://air-quality-api.open-meteo.com"
 	};
 
 	// ===================== 时间 / 日期 =====================
@@ -104,33 +101,34 @@
 		});
 	}
 
-	// ===================== 和风天气（QWeather）字段映射 =====================
-	// 和风 v1 的 condition.text 已经是本地化中文，直接展示即可；
-	// condition.code 只在挑图标时当兜底。
-	function weatherIconByText(text, code) {
-		var t = String(text || "");
-		if (/霾|浮尘|扬沙|沙尘/.test(t)) return "😷";
-		if (/雷/.test(t)) return "⛈️";
-		if (/雪|米雪/.test(t)) return "🌨️";
-		if (/雨/.test(t)) return "🌧️";
-		if (/雾/.test(t)) return "🌫️";
-		if (/阴/.test(t)) return "☁️";
-		if (/多云|少云/.test(t)) return "⛅";
-		if (/晴/.test(t)) return "☀️";
-		return weatherIconByCode(code);
+	// ===================== 天气现象映射（WMO weather_code）=====================
+	// Open-Meteo 只回数字代码，不给本地化文字，中文文案和图标都在这张表里自建。
+	var WmoWeather = {
+		0: ["晴", "☀️"], 1: ["晴间多云", "⛅"], 2: ["多云", "⛅"], 3: ["阴", "☁️"],
+		45: ["雾", "🌫️"], 48: ["冻雾", "🌫️"],
+		51: ["毛毛雨", "🌦️"], 53: ["毛毛雨", "🌦️"], 55: ["毛毛雨", "🌧️"],
+		56: ["冻毛毛雨", "🌧️"], 57: ["冻毛毛雨", "🌧️"],
+		61: ["小雨", "🌦️"], 63: ["中雨", "🌧️"], 65: ["大雨", "🌧️"],
+		66: ["冻雨", "🌧️"], 67: ["冻雨", "🌧️"],
+		71: ["小雪", "🌨️"], 73: ["中雪", "🌨️"], 75: ["大雪", "❄️"], 77: ["雪粒", "🌨️"],
+		80: ["阵雨", "🌦️"], 81: ["阵雨", "🌧️"], 82: ["强阵雨", "🌧️"],
+		85: ["阵雪", "🌨️"], 86: ["阵雪", "❄️"],
+		95: ["雷阵雨", "⛈️"], 96: ["雷暴伴冰雹", "⛈️"], 99: ["雷暴伴冰雹", "⛈️"]
+	};
+
+	function wmoEntry(code) {
+		return WmoWeather[code] || null;
 	}
 
-	// condition.code 兜底：按官方代码段归类
-	function weatherIconByCode(code) {
-		var n = parseInt(code, 10);
-		if (!Number.isFinite(n)) return "🌡️";
-		if ((n >= 100 && n <= 103) || (n >= 150 && n <= 153)) return "☀️";
-		if (n === 104) return "☁️";
-		if (n >= 200 && n <= 213) return "🌬️";
-		if (n >= 300 && n <= 399) return "🌧️";
-		if (n >= 400 && n <= 499) return "🌨️";
-		if (n >= 500 && n <= 515) return "🌫️";
-		return "🌡️";
+	// 风级：Open-Meteo 给的是 km/h，蒲福等级自己按阈值换算
+	function beaufortScale(kmh) {
+		var limits = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118];
+		for (var i = 0; i < limits.length; i++) {
+			if (Number(kmh) < limits[i]) {
+				return i;
+			}
+		}
+		return 12;
 	}
 
 	function windDirection(degrees) {
@@ -147,38 +145,57 @@
 		if (value == null || !Number.isFinite(num)) {
 			return "暂无数据";
 		}
-		// CO 这类浓度很小（mg/m³），四舍五入会变成 0，所以小于 10 时保留一位小数
+		// Open-Meteo 的污染物一律 μg/m³，CO 也是（和风的 CO 是 mg/m³，量级差一千倍）
 		var text = num >= 10 ? String(Math.round(num)) : num.toFixed(1);
 		return text + " " + (unit || "μg/m³");
 	}
 
-	// 取当前天气现象的中文描述：和风直接给本地化文本
-	function currentWeatherText(current) {
-		return (current && current.condition && current.condition.text) || "天气未知";
+	// US AQI 只有数值，等级文案按官方分段自己算
+	function aqiCategory(aqi) {
+		var n = Number(aqi);
+		if (!Number.isFinite(n)) {
+			return "";
+		}
+		if (n <= 50) return "优";
+		if (n <= 100) return "良";
+		if (n <= 150) return "轻度污染";
+		if (n <= 200) return "中度污染";
+		if (n <= 300) return "重度污染";
+		return "严重污染";
 	}
 
-	// 天气现象对应的图标：先按中文关键字挑，挑不到再按 condition.code 归类
+	function currentWeatherText(current) {
+		var entry = wmoEntry(current && current.weather_code);
+		return entry ? entry[0] : "天气未知";
+	}
+
 	function currentWeatherIcon(current) {
-		var code = current && current.condition ? current.condition.code : null;
-		return weatherIconByText(currentWeatherText(current), code);
+		var entry = wmoEntry(current && current.weather_code);
+		return entry ? entry[1] : "🌡️";
 	}
 
 	// 记录最近一次成功解析出的取数点，供定时刷新复用
 	var resolvedWeatherLocation = null;
 	var lastWeatherFetchAt = 0;
 
-	// 和风 API Host 是账号专属的，末尾可能带斜杠，统一去掉
-	function qweatherUrl(path) {
-		var host = String(dwWeatherConfig.qweatherApiHost || "").replace(/\/+$/, "");
-		return host + path;
+	// 实况 + 今日预报一次请求就能拿全（daily 数组在同一响应里返回），无需鉴权。
+	function forecastUrl(latitude, longitude) {
+		return dwWeatherConfig.openMeteoHost + "/v1/forecast" +
+			"?latitude=" + Number(latitude).toFixed(4) +
+			"&longitude=" + Number(longitude).toFixed(4) +
+			"&current=temperature_2m,apparent_temperature,relative_humidity_2m," +
+			"precipitation,weather_code,cloud_cover,visibility,surface_pressure," +
+			"wind_speed_10m,wind_direction_10m" +
+			"&daily=weather_code,sunrise,sunset,precipitation_probability_max,uv_index_max" +
+			"&timezone=auto&forecast_days=1";
 	}
 
-	// 和风 v1 的数值字段统一是 { value, unit } 对象，取标量
-	function pickValue(node) {
-		if (node && typeof node === "object" && node.value !== undefined) {
-			return node.value;
-		}
-		return node;
+	function airQualityUrl(latitude, longitude) {
+		return dwWeatherConfig.airQualityHost + "/v1/air-quality" +
+			"?latitude=" + Number(latitude).toFixed(4) +
+			"&longitude=" + Number(longitude).toFixed(4) +
+			"&current=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide," +
+			"sulphur_dioxide,us_aqi&timezone=auto";
 	}
 
 	// 判断取到的值是不是可用数字。
@@ -187,39 +204,6 @@
 	function isNum(value) {
 		return value !== null && value !== undefined && value !== "" &&
 			Number.isFinite(Number(value));
-	}
-
-	// 污染物浓度表：code -> { value, unit }。单位随污染物而变（CO 是 mg/m³，其余多为 μg/m³）
-	function airQualityMap(airData) {
-		var map = {};
-		var list = (airData && airData.pollutants) || [];
-		for (var i = 0; i < list.length; i++) {
-			var item = list[i];
-			if (!item || !item.code) {
-				continue;
-			}
-			map[item.code] = {
-				value: item.concentration ? item.concentration.value : null,
-				unit: item.concentration ? item.concentration.unit : null
-			};
-		}
-		return map;
-	}
-
-	// 取 AQI：优先中国标准 cn-mee，没有就退到第一个指数
-	function airQualityIndex(airData) {
-		var list = (airData && airData.indexes) || [];
-		var chosen = null;
-		for (var i = 0; i < list.length; i++) {
-			if (list[i] && list[i].code === "cn-mee") {
-				chosen = list[i];
-				break;
-			}
-		}
-		if (!chosen) {
-			chosen = list[0];
-		}
-		return chosen || null;
 	}
 
 	// 外部数据（attributions）拼进 innerHTML 前必须转义
@@ -232,8 +216,7 @@
 	// 带超时的 fetch：定位类接口偶尔会挂住不返回，没有超时页面会永远停在「正在定位...」
 	// deadlineMs 是调用方给的剩余总时限，取它和 requestTimeoutMs 的较小值，
 	// 保证整条回退链不会因为多个源逐个超时而越拖越久。
-	// init 用于附加请求头（和风的 X-QW-Api-Key 必须走头，不能用查询参数）。
-	function fetchWithTimeout(url, timeoutMs, deadlineMs, init) {
+	function fetchWithTimeout(url, timeoutMs, deadlineMs) {
 		var limit = timeoutMs || dwWeatherConfig.requestTimeoutMs;
 		if (typeof deadlineMs === "number" && deadlineMs < limit) {
 			limit = deadlineMs;
@@ -247,10 +230,7 @@
 			controller.abort();
 		}, limit);
 
-		var options = init || {};
-		options.signal = controller.signal;
-
-		return fetch(url, options).then(function (response) {
+		return fetch(url, { signal: controller.signal }).then(function (response) {
 			window.clearTimeout(timer);
 			if (!response.ok) {
 				throw new Error("请求失败 " + response.status + "：" + url);
@@ -291,51 +271,33 @@
 		};
 		lastWeatherFetchAt = Date.now();
 
-		// 和风 v1 的路径参数：纬度在前、经度在后，最多两位小数
-		var coord = Number(latitude).toFixed(2) + "/" + Number(longitude).toFixed(2);
 		var timeout = dwWeatherConfig.requestTimeoutMs;
-		var authInit = { headers: { "X-QW-Api-Key": dwWeatherConfig.qweatherApiKey } };
 
-		var currentRequest = fetchWithTimeout(
-			qweatherUrl("/weather/v1/current/" + coord + "?localTime=true"),
-			timeout, undefined, authInit
-		).then(function (response) {
-			return response.json();
-		});
-
-		// 每日预报只用于日出日落和降水概率，失败时降级为「暂无数据」，
-		// 不该把整个天气卡片拖成不可用
-		var dailyRequest = fetchWithTimeout(
-			qweatherUrl("/weather/v1/daily/" + coord + "?days=1&localTime=true"),
-			timeout, undefined, authInit
-		).then(function (response) {
-			return response.json();
-		}).catch(function (error) {
-			console.warn("每日预报获取失败，日出日落与降水概率显示暂无数据", error);
-			return null;
-		});
+		var forecastRequest = fetchWithTimeout(forecastUrl(latitude, longitude), timeout)
+			.then(function (response) {
+				return response.json();
+			});
 
 		// 空气质量是锦上添花，失败不该拖垮整个天气卡片
-		var airRequest = fetchWithTimeout(
-			qweatherUrl("/airquality/v1/current/" + coord),
-			timeout, undefined, authInit
-		).then(function (response) {
-			return response.json();
-		}).catch(function (error) {
-			console.warn("空气质量获取失败，详情中显示暂无数据", error);
-			return null;
-		});
+		var airRequest = fetchWithTimeout(airQualityUrl(latitude, longitude), timeout)
+			.then(function (response) {
+				return response.json();
+			}).catch(function (error) {
+				console.warn("空气质量获取失败，详情中显示暂无数据", error);
+				return null;
+			});
 
-		Promise.all([currentRequest, dailyRequest, airRequest])
+		Promise.all([forecastRequest, airRequest])
 			.then(function (results) {
-				var current = results[0];
-				var daily = results[1];
-				var air = results[2];
+				var forecast = results[0];
+				var air = results[1];
+				var current = forecast && forecast.current;
+				var daily = forecast && forecast.daily;
 
 				// 气温是必填项：拿不到就当作整个请求失败，走兜底文案
-				var temp = pickValue(current && current.temperature);
+				var temp = current && current.temperature_2m;
 				if (!isNum(temp)) {
-					throw new Error("和风天气未返回有效气温");
+					throw new Error("Open-Meteo 未返回有效气温");
 				}
 				var text = currentWeatherText(current);
 				var icon = currentWeatherIcon(current);
@@ -354,61 +316,47 @@
 					return;
 				}
 
-				var day = daily && daily.days ? daily.days[0] : null;
-				var astro = (day && day.astro) || {};
-				var pollutants = airQualityMap(air);
-				var index = airQualityIndex(air);
+				// daily 是与 current 平行的数组，forecast_days=1 所以只有今天这一格
+				var dailyFirst = function (key) {
+					return daily && Array.isArray(daily[key]) ? daily[key][0] : null;
+				};
+				var prob = dailyFirst("precipitation_probability_max");
+				var uvIndex = dailyFirst("uv_index_max");
+				var sunrise = dailyFirst("sunrise");
+				var sunset = dailyFirst("sunset");
 
-				// 实时接口没有降水概率，取今天白天/夜间两者的较大值
-				var dayProb = day && day.daytime && day.daytime.precipitation
-					? Number(day.daytime.precipitation.probability) : null;
-				var nightProb = day && day.nighttime && day.nighttime.precipitation
-					? Number(day.nighttime.precipitation.probability) : null;
-				var prob = Math.max(
-					Number.isFinite(dayProb) ? dayProb : 0,
-					Number.isFinite(nightProb) ? nightProb : 0
-				);
-
-				// 湿度、云量、降水概率在和风 v1 里都是 [0,1] 小数
-				var humidity = pickValue(current.humidity);
-				var cloudCover = pickValue(current.cloudCover);
-				var visibility = pickValue(current.visibility);
-				var feelsLike = pickValue(current.feelsLike);
-				var pressure = pickValue(current.pressure);
-				var precipAmount = current.precipitation
-					? pickValue(current.precipitation.amount) : null;
-				var windDegree = current.wind && current.wind.direction
-					? current.wind.direction.degree : null;
-				var windScale = current.wind ? current.wind.scale : null;
+				// Open-Meteo 的湿度、云量、降水概率已经是百分数，不像和风那样是 [0,1] 小数
+				var humidity = current.relative_humidity_2m;
+				var cloudCover = current.cloud_cover;
+				var visibility = current.visibility;
+				var feelsLike = current.apparent_temperature;
+				var pressure = current.surface_pressure;
+				var precipAmount = current.precipitation;
+				var windDegree = current.wind_direction_10m;
+				var windSpeed = current.wind_speed_10m;
 
 				// 注意 Number(null) 是 0，所以必须先判空再转数字，否则缺字段会显示「北风 null级」
-				var windText = (windDegree != null && windScale != null)
-					? windDirection(Number(windDegree)) + "风 " + windScale + "级"
+				var windText = (isNum(windDegree) && isNum(windSpeed))
+					? windDirection(Number(windDegree)) + "风 " + beaufortScale(windSpeed) + "级"
 					: "暂无数据";
 
-				// 空气质量卡片只显示 AQI 与等级，具体污染物浓度统一放下面的「污染物浓度」块
-				var pm25 = pollutants.pm2p5 || {};
-				var airText = "暂无数据";
-				if (index) {
-					airText = "AQI " + (index.aqiDisplay != null ? index.aqiDisplay : index.aqi) +
-						(index.category ? " " + index.category : "");
-				}
+				// 空气质量只显示 AQI 与等级，具体污染物浓度统一放下面的「污染物浓度」块
+				var airNow = air && air.current;
+				var airUnits = (air && air.current_units) || {};
+				var aqi = airNow ? airNow.us_aqi : null;
+				var airText = isNum(aqi)
+					? "AQI " + Math.round(Number(aqi)) + " " + aqiCategory(aqi)
+					: "暂无数据";
 
-				// 和风要求标注数据来源。attributions 给的是 URL，做成可点链接更友好；
-				// 但这是外部数据，必须转义后再拼进 innerHTML。
-				var attributions = (current.metadata && current.metadata.attributions) || [];
-				var sourceNote = "<div class=\"dw-source-note\">🌤️ 数据来源：";
-				if (attributions.length) {
-					sourceNote += attributions.map(function (item) {
-						var itemText = String(item);
-						return /^https?:\/\//.test(itemText)
-							? "<a href=\"" + escapeHtml(itemText) + "\" target=\"_blank\" rel=\"noopener noreferrer\">和风天气</a>"
-							: escapeHtml(itemText);
-					}).join(" / ");
-				} else {
-					sourceNote += "和风天气";
-				}
-				sourceNote += "</div>";
+				// Open-Meteo 把单位放在和平行字段分开的 current_units 里
+				var airVal = function (key) {
+					return formatAirValue(airNow && airNow[key], airUnits[key]);
+				};
+
+				// Open-Meteo 按 CC BY 4.0 授权，要求标注数据来源，这段署名别删
+				var sourceNote = "<div class=\"dw-source-note\">🌤️ 数据来源：" +
+					"<a href=\"https://open-meteo.com/\" target=\"_blank\" rel=\"noopener noreferrer\">Open-Meteo</a>" +
+					"（<a href=\"https://creativecommons.org/licenses/by/4.0/\" target=\"_blank\" rel=\"noopener noreferrer\">CC BY 4.0</a>）</div>";
 
 				forecastElement.innerHTML =
 					"<div class=\"dw-detail-heading\">今日天气详情" +
@@ -422,34 +370,34 @@
 					(isNum(feelsLike) ? Math.round(Number(feelsLike)) + "°" : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>💧</i><span><em>湿度</em><b>" +
-					(isNum(humidity) ? Math.round(Number(humidity) * 100) + "%" : "暂无数据") +
+					(isNum(humidity) ? Math.round(Number(humidity)) + "%" : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>⏱️</i><span><em>气压</em><b>" +
 					(isNum(pressure) ? Math.round(Number(pressure)) + " hPa" : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>🍃</i><span><em>空气质量</em><b>" + airText + "</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>☁️</i><span><em>云量</em><b>" +
-					(isNum(cloudCover) ? Math.round(Number(cloudCover) * 100) + "%" : "暂无数据") +
+					(isNum(cloudCover) ? Math.round(Number(cloudCover)) + "%" : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>☀️</i><span><em>紫外线</em><b>" +
-					(isNum(current.uvIndex) ? Number(current.uvIndex).toFixed(1) : "暂无数据") +
+					(isNum(uvIndex) ? Number(uvIndex).toFixed(1) : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>🌧️</i><span><em>降水量</em><b>" +
 					(isNum(precipAmount) ? Number(precipAmount).toFixed(1) + " mm" : "暂无数据") +
 					"</b></span></div>" +
 					"<div class=\"dw-detail-card\"><i>☔</i><span><em>降水概率</em><b>" +
-					Math.round(prob * 100) + "%</b></span></div>" +
-					"<div class=\"dw-detail-card\"><i>🌅</i><span><em>日出</em><b>" + formatWeatherTime(astro.sunrise) + "</b></span></div>" +
-					"<div class=\"dw-detail-card\"><i>🌇</i><span><em>日落</em><b>" + formatWeatherTime(astro.sunset) + "</b></span></div>" +
+					(isNum(prob) ? Math.round(Number(prob)) + "%" : "暂无数据") + "</b></span></div>" +
+					"<div class=\"dw-detail-card\"><i>🌅</i><span><em>日出</em><b>" + formatWeatherTime(sunrise) + "</b></span></div>" +
+					"<div class=\"dw-detail-card\"><i>🌇</i><span><em>日落</em><b>" + formatWeatherTime(sunset) + "</b></span></div>" +
 					"</div>" +
 					"<div class=\"dw-air-title\">污染物浓度</div>" +
 					"<div class=\"dw-pollutant-grid\">" +
-					"<span><i>PM2.5</i><b>" + formatAirValue(pm25.value, pm25.unit) + "</b></span>" +
-					"<span><i>PM10</i><b>" + formatAirValue((pollutants.pm10 || {}).value, (pollutants.pm10 || {}).unit) + "</b></span>" +
-					"<span><i>O₃</i><b>" + formatAirValue((pollutants.o3 || {}).value, (pollutants.o3 || {}).unit) + "</b></span>" +
-					"<span><i>NO₂</i><b>" + formatAirValue((pollutants.no2 || {}).value, (pollutants.no2 || {}).unit) + "</b></span>" +
-					"<span><i>SO₂</i><b>" + formatAirValue((pollutants.so2 || {}).value, (pollutants.so2 || {}).unit) + "</b></span>" +
-					"<span><i>CO</i><b>" + formatAirValue((pollutants.co || {}).value, (pollutants.co || {}).unit) + "</b></span>" +
+					"<span><i>PM2.5</i><b>" + airVal("pm2_5") + "</b></span>" +
+					"<span><i>PM10</i><b>" + airVal("pm10") + "</b></span>" +
+					"<span><i>O₃</i><b>" + airVal("ozone") + "</b></span>" +
+					"<span><i>NO₂</i><b>" + airVal("nitrogen_dioxide") + "</b></span>" +
+					"<span><i>SO₂</i><b>" + airVal("sulphur_dioxide") + "</b></span>" +
+					"<span><i>CO</i><b>" + airVal("carbon_monoxide") + "</b></span>" +
 					"</div>" +
 					sourceNote;
 			})
