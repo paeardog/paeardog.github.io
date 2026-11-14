@@ -1,0 +1,43 @@
+name: Generate snake animation
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # 每天 UTC 0 点
+
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+jobs:
+  generate:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Generate snake.svg
+        uses: Platane/snk@v3
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          outputs: |
+            dist/github-snake.svg
+            dist/github-snake-dark.svg?palette=github-dark
+
+      # 只用 output 分支存放产物，不改动 Pages 配置。
+      # 站点的 Pages 源是 main 根目录，用 ghaction-github-pages 之类会去改
+      # Pages 源分支，那等于把主页本身下线。
+      - name: Publish to output branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -qb output
+          git add -A
+          git commit -qm "Update snake animation at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" output:output

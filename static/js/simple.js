@@ -96,8 +96,8 @@
 		}
 		if (snake) {
 			snake.src = theme === "Dark"
-				? "https://raw.githubusercontent.com/MuyuDada/MuyuDada/output/github-snake-dark.svg"
-				: "https://raw.githubusercontent.com/MuyuDada/MuyuDada/output/github-snake.svg";
+				? "https://raw.githubusercontent.com/paeardog/paeardog.github.io/output/github-snake-dark.svg"
+				: "https://raw.githubusercontent.com/paeardog/paeardog.github.io/output/github-snake.svg";
 		}
 		if (cardColor) {
 			cardColor.value = currentCardColor();
