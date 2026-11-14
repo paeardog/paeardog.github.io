@@ -23,13 +23,11 @@
 		})();
 	</script>
 	<!-- 预连接关键外部服务：图片 / Font Awesome / 音乐与天气接口 -->
-	<link rel="preconnect" href="https://muyuimg.cc.cd">
 	<link rel="preconnect" href="https://cdnjs.cloudflare.com">
 	<link rel="preconnect" href="https://api.qijieya.cn">
 	<link rel="preconnect" href="https://api.open-meteo.com">
 	<link rel="dns-prefetch" href="https://count.getloli.com">
 	<link rel="dns-prefetch" href="https://v1.hitokoto.cn">
-	<link rel="dns-prefetch" href="https://sdk.51.la">
 	<!-- 关键字体预加载，让文字尽早以最终字体呈现 -->
 	<link rel="preload" href="./static/fonts/LXGWZhenKai.subset.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="preload" href="./static/fonts/Ubuntu-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -408,17 +406,50 @@
 			</div>
 		</section>
 
-		<!-- 技能 -->
+		<!-- 技术栈 -->
 		<section class="home-section">
-			<h2 class="page-title">skills</h2>
-			<div class="home-card skills-card">
-				<img src="./static/svg/header.webp" alt="skills" loading="lazy" decoding="async">
+			<h2 class="page-title"><span>技术</span>栈</h2>
+			<div class="workbox stackbox">
+				<!-- 基础设施 -->
+				<a class="stack" href="https://www.cloudflare.com" target="_blank" rel="noopener noreferrer" style="--brand:#F38020"><img src="./static/svg/icons/cloudflare.svg" alt="" aria-hidden="true"><span>Cloudflare</span></a>
+				<!-- AI -->
+				<a class="stack" href="https://www.python.org" target="_blank" rel="noopener noreferrer" style="--brand:#3776AB"><img src="./static/svg/icons/python.svg" alt="" aria-hidden="true"><span>Python</span></a>
+				<a class="stack" href="https://chat.qwen.ai" target="_blank" rel="noopener noreferrer" style="--brand:#6950EF"><img src="./static/svg/icons/qwen.svg" alt="" aria-hidden="true"><span>Qwen</span></a>
+				<a class="stack" href="https://www.deepseek.com" target="_blank" rel="noopener noreferrer" style="--brand:#5786FE"><img src="./static/svg/icons/deepseek.svg" alt="" aria-hidden="true"><span>DeepSeek</span></a>
+				<a class="stack" href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer" style="--brand:#D97757"><img src="./static/svg/icons/claude.svg" alt="" aria-hidden="true"><span>Claude</span></a>
+				<a class="stack" href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" style="--brand:#8E75B2"><img src="./static/svg/icons/googlegemini.svg" alt="" aria-hidden="true"><span>Gemini</span></a>
+				<a class="stack" href="https://lmstudio.ai" target="_blank" rel="noopener noreferrer" style="--brand:#8fa3bf"><img src="./static/svg/icons/lmstudio.svg" alt="" aria-hidden="true"><span>LM Studio</span></a>
+				<!-- 数据与模型 -->
+				<a class="stack" href="https://numpy.org" target="_blank" rel="noopener noreferrer" style="--brand:#013243"><img src="./static/svg/icons/numpy.svg" alt="" aria-hidden="true"><span>NumPy</span></a>
+				<a class="stack" href="https://opencv.org" target="_blank" rel="noopener noreferrer" style="--brand:#5C3EE8"><img src="./static/svg/icons/opencv.svg" alt="" aria-hidden="true"><span>OpenCV</span></a>
+				<a class="stack" href="https://onnx.ai" target="_blank" rel="noopener noreferrer" style="--brand:#005CED"><img src="./static/svg/icons/onnx.svg" alt="" aria-hidden="true"><span>ONNX</span></a>
+				<a class="stack" href="https://docs.conda.io" target="_blank" rel="noopener noreferrer" style="--brand:#44A833"><img src="./static/svg/icons/anaconda.svg" alt="" aria-hidden="true"><span>Conda</span></a>
+				<a class="stack" href="https://www.sqlite.org" target="_blank" rel="noopener noreferrer" style="--brand:#003B57"><img src="./static/svg/icons/sqlite.svg" alt="" aria-hidden="true"><span>SQLite</span></a>
+				<!-- 后端 -->
+				<a class="stack" href="https://openjdk.org" target="_blank" rel="noopener noreferrer" style="--brand:#8fa3bf"><img src="./static/svg/icons/openjdk.svg" alt="" aria-hidden="true"><span>JDK 17</span></a>
+				<a class="stack" href="https://dotnet.microsoft.com" target="_blank" rel="noopener noreferrer" style="--brand:#512BD4"><img src="./static/svg/icons/dotnet.svg" alt="" aria-hidden="true"><span>.NET</span></a>
+				<a class="stack" href="https://nodejs.org" target="_blank" rel="noopener noreferrer" style="--brand:#5FA04E"><img src="./static/svg/icons/nodedotjs.svg" alt="" aria-hidden="true"><span>Node.js</span></a>
+				<a class="stack" href="https://www.mysql.com" target="_blank" rel="noopener noreferrer" style="--brand:#4479A1"><img src="./static/svg/icons/mysql.svg" alt="" aria-hidden="true"><span>MySQL</span></a>
+				<a class="stack" href="https://www.eyuyan.com" target="_blank" rel="noopener noreferrer" style="--brand:#FE0000"><img src="./static/svg/icons/epl.svg" alt="" aria-hidden="true"><span>易语言</span></a>
+				<!-- 前端与工具链 -->
+				<a class="stack" href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" rel="noopener noreferrer" style="--brand:#E34F26"><img src="./static/svg/icons/html5.svg" alt="" aria-hidden="true"><span>HTML5</span></a>
+				<a class="stack" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noopener noreferrer" style="--brand:#F7DF1E"><img src="./static/svg/icons/javascript.svg" alt="" aria-hidden="true"><span>JS</span></a>
+				<a class="stack" href="https://git-scm.com" target="_blank" rel="noopener noreferrer" style="--brand:#F03C2E"><img src="./static/svg/icons/git.svg" alt="" aria-hidden="true"><span>Git</span></a>
+				<a class="stack" href="https://github.com/features/actions" target="_blank" rel="noopener noreferrer" style="--brand:#2088FF"><img src="./static/svg/icons/githubactions.svg" alt="" aria-hidden="true"><span>Actions</span></a>
+				<a class="stack" href="https://www.jetbrains.com/idea/" target="_blank" rel="noopener noreferrer" style="--brand:#8fa3bf"><img src="./static/svg/icons/intellijidea.svg" alt="" aria-hidden="true"><span>IDEA</span></a>
+				<a class="stack" href="https://www.jetbrains.com/pycharm/" target="_blank" rel="noopener noreferrer" style="--brand:#8fa3bf"><img src="./static/svg/icons/pycharm.svg" alt="" aria-hidden="true"><span>PyCharm</span></a>
+				<!-- 折腾 -->
+				<a class="stack" href="https://www.kernel.org" target="_blank" rel="noopener noreferrer" style="--brand:#FCC624"><img src="./static/svg/icons/linux.svg" alt="" aria-hidden="true"><span>Linux</span></a>
+				<a class="stack" href="https://curl.se" target="_blank" rel="noopener noreferrer" style="--brand:#073551"><img src="./static/svg/icons/curl.svg" alt="" aria-hidden="true"><span>cURL</span></a>
+				<a class="stack" href="https://www.arduino.cc" target="_blank" rel="noopener noreferrer" style="--brand:#00878F"><img src="./static/svg/icons/arduino.svg" alt="" aria-hidden="true"><span>Arduino</span></a>
+				<a class="stack" href="https://ffmpeg.org" target="_blank" rel="noopener noreferrer" style="--brand:#007808"><img src="./static/svg/icons/ffmpeg.svg" alt="" aria-hidden="true"><span>FFmpeg</span></a>
+				<a class="stack" href="https://www.vmware.com" target="_blank" rel="noopener noreferrer" style="--brand:#007AA9"><img src="./static/svg/icons/vmware.svg" alt="" aria-hidden="true"><span>VMware</span></a>
 			</div>
 		</section>
 
 		<footer>
 			<div class="footer-inner">
-				<span class="footer-copy">Muyu © 2026</span>
+				<span class="footer-copy">eardog © 2026</span>
 				<span class="footer-runtime" title="网站运行时间">
 					本站已运行
 					<span id="site-runtime" class="footer-runtime-time">-- 天 -- 时 -- 分 -- 秒</span>
@@ -454,15 +485,6 @@
 	<script src="./static/js/terminal.js"></script>
 	<script src="./static/js/music.js"></script>
 	<script src="./static/js/simple.js"></script>
-	<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js" defer></script>
-	<script>
-		// 统计脚本延迟到页面加载完成后初始化，不阻塞主流程
-		window.addEventListener('load', function () {
-			if (typeof LA !== "undefined" && LA.init) {
-				LA.init({ id: "KFqltKSkJgQTGD9l", ck: "KFqltKSkJgQTGD9l" });
-			}
-		});
-	</script>
 </body>
 
 </html>

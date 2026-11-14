@@ -669,7 +669,7 @@ if (weatherToggle && weatherForecast) {
     });
 }
 
-// ===== 音乐组件（参考 muyudada.dpdns.org 左侧音乐布局，图标使用 Font Awesome 免费图标） =====
+// ===== 音乐组件（沿用二改模板的左侧音乐布局，图标使用 Font Awesome 免费图标） =====
 var musicPlayer = {
     audio: null,
     playlist: [],

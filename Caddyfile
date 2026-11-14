@@ -1,4 +1,4 @@
-# Muyu 个人主页 — Caddy 配置
+# eardog 个人主页 — Caddy 配置
 #
 # 纯静态站点托管。天气数据已改为浏览器直连和风天气（QWeather），
 # 不需要任何服务端反代，所以这里只剩 file_server。

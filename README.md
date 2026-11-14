@@ -22,7 +22,7 @@
 
 ### 主页
 
-- **卡片式布局**:资料卡(头像 + 别名 + 所在地 + 座右铭 + 标签)、一言卡、时间天气卡、音乐卡、时间线、访问统计、GitHub 贪吃蛇、社交链接、站点与项目合集、技能图
+- **卡片式布局**:资料卡(头像 + 别名 + 所在地 + 座右铭 + 标签)、一言卡、时间天气卡、音乐卡、时间线、访问统计、GitHub 贪吃蛇、社交链接、站点与项目合集、技术栈卡片
 - **终端模式**:**双击资料卡**进入,支持 `help` / `cd` / `visit` 等命令
 - **一言 Hitokoto**:打字机效果逐字显示,定时自动刷新
 - **当地时间**:实时时钟 + 中文日期(含星期)与时段问候,每秒更新
@@ -56,7 +56,7 @@
 │   │   ├── terminal.js       # 终端模式
 │   │   └── music.js          # 音乐播放器
 │   ├── img/                  # 图片资源
-│   ├── svg/                  # 贪吃蛇 SVG、技能图等素材
+│   ├── svg/                  # 贪吃蛇 SVG、技术栈图标(icons/)等素材
 │   └── fonts/                # 自托管字体(荆南波波黑 / 霞鹜文楷 / Pacifico / Ubuntu / FiraCode)
 │       ├── FiraCode-Bold.woff2
 │       ├── FiraCode-Light.woff2
@@ -66,6 +66,8 @@
 │       └── FiraCode-VF.woff2
 ├── .github/workflows/
 │   └── snake.yml             # 每日生成 GitHub 贡献贪吃蛇 SVG,产物提交到 output 分支
+├── tools/
+│   └── make-skill-icons.py   # 抓取 simple-icons 到 static/svg/icons/,并打印技术栈卡片片段
 ├── CNAME                     # GitHub Pages 自定义域名
 ├── Caddyfile                 # Caddy 服务器配置
 ├── Dockerfile                # 基于 caddy:alpine 的镜像
@@ -174,6 +176,31 @@ var weatherConfig = {
 4. **所有定位请求都必须带超时**,且整条链要有总时限 —— 否则接口挂住不返回时,页面会一直停在「正在定位...」。
 5. 定位类接口偶发失败是常态,所以任何一级都不能是单点,最后一定要能回退到兜底城市。
 
+### 技术栈卡片
+
+主页底部的技术栈是 28 张真实卡片(`index.html` 里的 `.workbox.stackbox`),按**本机实际装的软件 + 在用的服务**归纳,外观与交互直接复用上方「站点合集 / 个人项目」那套 `.workbox` 面板:平时把 logo 压成剪影,悬停才放大浮起、亮起品牌色光晕并还原 logo 原色。每张卡片本身是个 `<a>`,点了在新标签页打开对应官网。
+
+图标是 simple-icons 的官方路径,落在 `static/svg/icons/`,由 [`tools/make-skill-icons.py`](tools/make-skill-icons.py) 抓取。四条例外登记在脚本顶部的 `LOCAL`,生成器不去 CDN 抓:易语言是 simple-icons 里根本没这个条目,照官方印章手画;MySQL、.NET 和 VMware 的官方矢量虽然存在,但放到 24px 完全不能用,照官方 logo 重绘(细节见下面第 4、5 条)。
+
+```bash
+# 1. 编辑脚本顶部的 SKILLS,每条是 (slug, 显示名, 官网) —— slug 要在 https://simpleicons.org 上存在
+# 2. 重跑,把 stdout 整块替换进 index.html 的技术栈 section
+python tools/make-skill-icons.py
+```
+
+缓存抓在 `tools/.icon-cache/`(已 gitignore),命中时离线也能重跑。
+
+六个坑,改之前先读:
+
+1. **别用 `.skill` 当类名。** 旧版主页的 `static/css/style.css` 里已经有 `.skill { width: 100% }` 和 `.skill img { width: 100% }`,而 style.css 与 simple.css 同时加载 —— 新卡片会被撑成一屏一张。现在的类名是 `.stack`。
+2. **微软、Adobe 那批图标被商标方从 simple-icons 下架了**,`vscode` / `powershell` / `photoshop` / `java` 全是 404。所以 Java 走 `openjdk`,VS Code 与 PowerShell 干脆没上(机器上装了,但没有合规图标可用)。
+3. **黑 logo 必须压成剪影。** IDEA、PyCharm、OpenJDK、LM Studio 的官方色就是纯黑,直接铺在深色面板上会整块隐形,所以默认 `filter: brightness(0) invert(...)`;纯黑品牌做光晕也看不见,`--brand` 统一退成钢灰。
+4. **纯线条、纯字标的 logo 不能直接搬。** simple-icons 的 `mysql` 是「线条海豚 + MySQL 字标」的组合 logo,海豚是开放笔触(没有闭合轮廓,所以既填不出实心也 flood-fill 不了),压到 24px 线条直接消失;`dotnet` 就是 `.NET` 四个字,放进卡片会和文字标签重复成 `.NET .NET`;`vmware` 是整条「vmware」字标,在 24 的 viewBox 里横向铺开 23.8、竖向只有 3.8,塞进 24px 的图标框就糊成一条噪点。所以 MySQL 重绘成实心海豚剪影,.NET 和 VMware 改成方牌 + 挖空字标 —— VMware 照的是它自己的官方 favicon,那本来就是蓝牌 + 「vmw」。
+5. **手画图标要跟着剪影滤镜走。** 默认滤镜是 `brightness(0)`,它只压亮度不动 alpha,所以每个图标都得是「单色 + 透明底」:品牌色写在 `fill` 上,要留白的地方必须是真洞口,不能画成白色填充,否则剪影会糊成一团白。易语言的印章和 MySQL 的海豚都是单条 `fill-rule="evenodd"` 路径(印章是外圈圆角方 + 阴刻「易」,海豚是身体 + 挖掉的眼);.NET 的牌面用 `<mask>` 把官方字标挖穿,挖空路径加了 `stroke-width="0.5"`,不然 24px 下字标会糊没;VMware 的「vmw」是单线字体,直接拿 `fill="none" stroke="#000" stroke-width="6"` 画中心线(中心线坐标是在官方 favicon 的 96px 网格上量的,拱顶是平的、不是半圆),再 `scale(0.25)` 落进 24 的 viewBox。`LOCAL` 里的 slug 生成器不去 CDN 抓,文件丢了会直接报错退出。
+6. **官网 URL 得自己填,别指望 simple-icons。** 它的 `simple-icons.json` 只给 `hex` 和 logo 来源页,没有主页(记录在 `data/slugs/**.md` 的 frontmatter 里,不在打包数据中),所以 URL 手写在 SKILLS 第三列。加条目时先确认链接真的能打开 —— 卡片是第三方外链,统一带 `target="_blank" rel="noopener noreferrer"`,`<a>` 上也别留下划线(`text-decoration: none`),否则会和上方项目卡片的观感不一致。
+
+窄屏不需要特殊处理:卡片是 `flex-wrap` 换行的,不是轮播 —— 28 项排成横滑要划十几屏,铺开桌面端三行就装完了。
+
 ## 🧰 技术栈
 
 原生 HTML / CSS / JavaScript,**无框架、无构建工具**,克隆下来就能跑。
@@ -191,10 +218,11 @@ var weatherConfig = {
 - [Meting](https://github.com/metowolf/Meting) — 音乐接口解析
 - [Hitokoto 一言](https://hitokoto.cn) — 一言数据
 - [Open-Meteo](https://open-meteo.com/) — 天气与空气质量数据(CC BY 4.0)
+- [simple-icons](https://simpleicons.org/) — 技术栈卡片用的品牌图标路径(CC0-1.0;商标仍归各自品牌方)
 - [NodeCursor](https://github.com/hmongouachon/NodeCursor) — 主页光标跟随效果
 - [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) — 中文字体
 - [荆南波波黑](https://www.maoken.com/freefonts/14257.html) — 荆南字坊出品的免费商用字体
 
 ---
 
-Muyu © 2026 · 豫ICP备2026015852号-1 · 本仓库仅作个人使用与学习交流
+eardog © 2026 · 本仓库仅作个人使用与学习交流

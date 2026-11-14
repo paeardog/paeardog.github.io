@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Muyu 个人主页样式表
+   eardog 个人主页样式表
    --------------------------------------------------------------------------
    设计思路：
    1. 一切颜色 / 圆角 / 间距 / 阴影都收敛为 CSS 变量，组件只引用变量；
@@ -10,8 +10,8 @@
    4. 布局使用统一的间距与圆角节奏，栅格与卡片边缘对齐。
 
    注意：--background-opacity / --back_filter / --card-opacity / --card_filter /
-   --card-base-rgb 这 5 个变量会在运行时被 static/js/script.js 按用户设置覆盖，
-   这里的默认值与 script.js 中的 themeDefaults 保持一致，避免首帧跳动。
+   --card-base-rgb 这 5 个变量会在运行时被 static/js/simple.js 按用户设置覆盖，
+   这里的默认值与 simple.js 中的 themeDefaults 保持一致，避免首帧跳动。
    ========================================================================== */
 
 /* ============================== 字体 ============================== */
@@ -81,7 +81,7 @@
 html[data-theme="Light"] {
     color-scheme: light;
 
-    /* 运行时由 JS 覆盖的动态变量（默认值与 script.js 一致） */
+    /* 运行时由 JS 覆盖的动态变量（默认值与 simple.js 一致） */
     --card-base-rgb: 239, 246, 252;
     --backdrop-rgb: 255, 255, 255;
     --background-opacity: 0.2;
@@ -147,7 +147,7 @@ html[data-theme="Light"] {
 html[data-theme="Dark"] {
     color-scheme: dark;
 
-    /* 运行时由 JS 覆盖的动态变量（默认值与 script.js 一致） */
+    /* 运行时由 JS 覆盖的动态变量（默认值与 simple.js 一致） */
     --card-base-rgb: 24, 30, 42;
     --backdrop-rgb: 8, 12, 20;
     --background-opacity: 0.38;
@@ -627,7 +627,7 @@ content {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple_text_color) 22%, transparent);
 }
 
-/* ===== 音乐组件（参考 muyudada.dpdns.org 左侧音乐布局） ===== */
+/* ===== 音乐组件（沿用二改模板的左侧音乐布局） ===== */
 .music-widget {
     display: flex;
     flex-direction: column;

@@ -695,16 +695,74 @@ html[data-theme="Light"] #background {
 	background-color: var(--color);
 }
 
-/* --------------------------- 技能 --------------------------- */
-.skills-card {
-	padding: 0;
-	overflow: hidden;
+/* --------------------------- 技术栈 --------------------------- */
+/* 直接复用 .workbox 的面板外观，只把横滑换成自动换行：
+   28 个技能排成轮播要划十几屏才看完，铺开后桌面端三行就装完了。 */
+.workbox.stackbox {
+	flex-wrap: wrap;
+	height: auto;
+	gap: 12px;
+	padding: 18px;
+	overflow: visible;
 }
 
-.skills-card img {
-	display: block;
-	width: 100%;
-	height: auto;
+/* 卡片本身是个 <a>，点了跳对应官网。不写 cursor，跟着浏览器给链接的 pointer。 */
+.stack {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	height: 46px;
+	padding: 0 15px 0 12px;
+	border: 1px solid var(--card-border);
+	border-radius: var(--r-sm);
+	background-color: color-mix(in srgb, var(--main_text_color) 5%, var(--item_bg_color));
+	text-decoration: none;
+	transition: transform var(--dur) var(--ease-out),
+		border-color var(--dur) var(--ease-out),
+		box-shadow var(--dur) var(--ease-out);
+}
+
+/* logo 平时压成剪影，悬停才放品牌色。不是为了炫：simple-icons 里 IDEA、
+   PyCharm、OpenJDK、LM Studio 的官方 logo 本身就是纯黑的，直接铺在深色
+   面板上会整块隐形。 */
+.stack img {
+	width: 24px;
+	height: 24px;
+	filter: brightness(0) opacity(0.55);
+	transition: filter var(--dur) var(--ease-out);
+}
+
+[data-theme="Dark"] .stack img {
+	filter: brightness(0) invert(0.8);
+}
+
+.stack span {
+	color: color-mix(in srgb, var(--main_text_color) 72%, transparent);
+	font-family: "Fira Code", ui-monospace, monospace;
+	font-size: 14px;
+}
+
+/* 悬停和键盘聚焦走同一套反馈：卡片现在是链接，Tab 过去也得看得出状态。 */
+.stack:hover,
+.stack:focus-visible {
+	transform: translateY(-3px);
+	border-color: color-mix(in srgb, var(--brand) 65%, transparent);
+	box-shadow: 0 8px 20px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+.stack:hover img,
+.stack:focus-visible img {
+	filter: none;
+}
+
+.stack:hover span {
+	color: var(--main_text_color);
+}
+
+/* 焦点环单独成条，不并进上面的悬停组：鼠标划过不该出现描边。 */
+.stack:focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--brand) 75%, transparent);
+	outline-offset: 2px;
 }
 
 /* --------------------------- 浮动工具栏 --------------------------- */
@@ -972,7 +1030,9 @@ html.has-custom-cursor * {
 	#linkbox .item,
 	#linkbox .item i,
 	.popup,
-	.workbox {
+	.workbox,
+	.stack,
+	.stack img {
 		transition: none;
 	}
 

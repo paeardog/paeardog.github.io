@@ -5,6 +5,9 @@
 # 本地分析笔记：只在本地留存，不随站点公开
 tonks-top-实现分析.md
 
+# 技能横幅生成器抓下来的 simple-icons 原图，可重跑再生成，不必进仓库
+tools/.icon-cache/
+
 .dev.vars*
 !.dev.vars.example
 .env*
